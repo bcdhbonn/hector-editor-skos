@@ -18,5 +18,5 @@ The editor features integrated APIs to directly link local concepts to major glo
 
 1. Clone this repository:
    ```bash
-   git clone [https://github.com/YOUR_USERNAME/hector-editor.git](https://github.com/YOUR_USERNAME/hector-editor.git)
+   git clone [https://github.com/bcdhbonn/hector-editor.git](https://github.com/bcdhbonn/hector-editor.git)
    cd hector-editor
