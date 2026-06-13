@@ -37,6 +37,7 @@ class HECTOREditor:
         # Multilingual ISO 639-1 language parameter registry
         self.all_possible_languages = ["en", "de", "fr", "es", "it", "la", "grc"]
         self.active_languages = ["en", "de"] 
+        self.tree_display_lang = "en"  # Speichert die aktuelle Sprache des Baums
         
         # Component caches mapping dynamic multilingual UI objects to runtime handlers
         self.lang_entries = {}      # Maps language codes to primary prefLabel ctk.CTkEntry widgets
@@ -97,9 +98,21 @@ class HECTOREditor:
         self.lbl_search_header = ctk.CTkLabel(self.left_frame, text="🔍 SEARCH & HIERARCHY", font=("Arial", 12))
         self.lbl_search_header.grid(row=3, column=0, padx=15, pady=(5, 0), sticky="w")
 
+        # Dropdown-Menü zur Auswahl der Anzeigesprache im Baum
+        self.tree_lang_var = ctk.StringVar(value=self.tree_display_lang)
+        self.opt_tree_lang = ctk.CTkOptionMenu(
+            self.left_frame, 
+            values=self.all_possible_languages, 
+            variable=self.tree_lang_var, 
+            command=self.change_tree_language,
+            font=("Arial", 12),
+            height=28
+        )
+        self.opt_tree_lang.grid(row=4, column=0, padx=15, pady=5, sticky="ew")
+
         # Interactive String Interception Filter Entry
         self.txt_search = ctk.CTkEntry(self.left_frame, placeholder_text="Type to filter hierarchy...", font=("Arial", 12))
-        self.txt_search.grid(row=4, column=0, padx=15, pady=5, sticky="ew")
+        self.txt_search.grid(row=5, column=0, padx=15, pady=5, sticky="ew")
         self.txt_search.bind("<KeyRelease>", lambda e: self.update_tree_ui())
 
         # Native Treeview Component Integration for Advanced SKOS Hierarchy Rendering
@@ -240,7 +253,7 @@ class HECTOREditor:
             return
 
         # 1. Technical URI Field
-        tk.Label(self.form_frame, text="URI (Read-only):", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+        tk.Label(self.form_frame, text="URI (Read-only):", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=(15, 3), sticky="w")
         self.entries["uri"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12))
         self.entries["uri"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=(15, 3), sticky="ew")
         if "uri" in cached_vals:
@@ -420,6 +433,10 @@ class HECTOREditor:
         self.active_languages.append(code)
         self.close_language_dropdown_popup()
         self.rebuild_form_grid()
+        
+        # NEU: Dropdown über dem Baum um die neue Sprache erweitern
+        if hasattr(self, "opt_tree_lang"):
+            self.opt_tree_lang.configure(values=self.all_possible_languages)
 
     def fetch_from_wikidata(self):
         """Dispatches external HTTP queries to find matching entities to automate mapping."""
@@ -770,9 +787,18 @@ class HECTOREditor:
     def get_label(self, uri):
         """Utility transformer unpacking machine-readable URIs out to intuitive local human label strings."""
         labels = list(self.g.objects(uri, SKOS.prefLabel))
+        
+        # 1. Priorität: Die aktuell im Dropdown gewählte Sprache
+        for l in labels:
+            if l.language == getattr(self, "tree_display_lang", "en"):
+                return str(l)
+                
+        # 2. Priorität: Fallback auf irgendeine bekannte Sprache
         for lang in self.all_possible_languages:
             for l in labels:
                 if l.language == lang: return str(l)
+                
+        # 3. Priorität: Irgendein Label, oder falls keines existiert, die pure URI
         if labels: return str(labels[0])
         return str(uri).split("#")[-1] if "#" in str(uri) else str(uri).split("/")[-1]
 
@@ -799,6 +825,11 @@ class HECTOREditor:
                 root_id = self.tree.insert("", "end", text=f"📂 {lbl}", values=(str(r),))
                 kids = sorted([(c, self.get_label(c)) for c in self.g.subjects(SKOS.broader, r)], key=lambda x: x[1].lower())
                 for child_uri, _ in kids: add_node_recursive(root_id, child_uri, set())
+
+    def change_tree_language(self, choice):
+        """Wechselt die Anzeigesprache des Baums und triggert einen Redraw."""
+        self.tree_display_lang = choice
+        self.update_tree_ui()
 
     def run_create_vocab(self):
         """Initializes an empty compliant SKOS metadata schema file placeholder directly out to structural storage targets."""
