@@ -7,6 +7,7 @@ The editor features integrated APIs to directly link local concepts to major glo
 ## ✨ Key Features
 * **SKOS Hierarchy Management:** Visually construct and manage `skos:Concept` hierarchies, broader/narrower relationships, and top concepts.
 * **Multilingual Support:** Dynamic UI for managing `skos:prefLabel` and `skos:altLabel` across multiple ISO 639-1 language codes.
+* **Polyhierarchical Support:** DConcepts can be linked to multiple broader terms, allowing for a accurate representation of complex knowledge domains and multi-faceted semantic classification.
 * **Authority File Integration:** Built-in asynchronous querying and exact matching (`skos:exactMatch`) for:
     * Wikidata API
     * Getty Art & Architecture Thesaurus (AAT)
