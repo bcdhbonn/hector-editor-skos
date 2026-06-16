@@ -6,7 +6,7 @@ import uuid
 import urllib.request
 import urllib.parse
 from tkinter import filedialog, messagebox, ttk
-import tkinter as tk  # Native Tkinter components utilized strictly for collapsing container physics
+import tkinter as tk  # Native Tkinter utilized strictly for collapsing container physics
 import customtkinter as ctk
 from rdflib import Graph, Literal, RDF, SKOS, URIRef
 
@@ -344,8 +344,6 @@ class HECTOREditor:
         if cached_parents:
             for parent_string in cached_parents:
                 self.add_parent_row(initial_text=parent_string)
-        else:
-            self.add_parent_row()
         current_row += 1
 
         # 6. Alignment Reference Matches
@@ -580,7 +578,7 @@ class HECTOREditor:
 
                 descriptions = entity.get("descriptions", {})
                 en_desc = descriptions.get("en", {}).get("value", "")
-                fallback_desc = en_desc if en_desc else next(iter(descriptions.values()), {}).get("value", "")
+                fallback_desc = f"{en_desc if en_desc else next(iter(descriptions.values()), {}).get('value', '')}"
                 if fallback_desc and "def" in self.entries and self.entries["def"].winfo_exists():
                     self.entries["def"].delete(0, "end")
                     self.entries["def"].insert(0, fallback_desc)
@@ -859,6 +857,20 @@ class HECTOREditor:
 
     def update_tree_ui(self):
         """Extracts concepts from graph data caches and map hierarchies sequentially onto visualization nodes."""
+        # State-Saver Tracker Pipeline: Collect open state mapped by concept URI values before flush cycle
+        open_states = set()
+        def collect_open_nodes(item_id):
+            if self.tree.item(item_id, "open"):
+                vals = self.tree.item(item_id, "values")
+                if vals:
+                    open_states.add(str(vals[0]))
+            for child in self.tree.get_children(item_id):
+                collect_open_nodes(child)
+
+        for root_item in self.tree.get_children():
+            collect_open_nodes(root_item)
+
+        # Clear tree
         for item in self.tree.get_children(): self.tree.delete(item)
         filter_txt = self.txt_search.get().lower().strip()
         concepts = set(self.g.subjects(RDF.type, SKOS.Concept))
@@ -870,14 +882,19 @@ class HECTOREditor:
             if concept_uri in path_set: return  
             lbl = self.get_label(concept_uri)
             if filter_txt and filter_txt not in lbl.lower(): return
-            node_id = self.tree.insert(parent_id, "end", text=f" └─ {lbl}", values=(str(concept_uri),))
+            
+            # Restore state if uri string matches historic cache keys
+            should_open = str(concept_uri) in open_states
+            node_id = self.tree.insert(parent_id, "end", text=f" └─ {lbl}", values=(str(concept_uri),), open=should_open)
+            
             kids = sorted([(c, self.get_label(c)) for c in self.g.subjects(SKOS.broader, concept_uri)], key=lambda x: x[1].lower())
             for child_uri, _ in kids: add_node_recursive(node_id, child_uri, path_set | {concept_uri})
 
         for r in roots:
             lbl = self.get_label(r)
             if not filter_txt or filter_txt in lbl.lower():
-                root_id = self.tree.insert("", "end", text=f"📂 {lbl}", values=(str(r),))
+                should_open = str(r) in open_states
+                root_id = self.tree.insert("", "end", text=f"📂 {lbl}", values=(str(r),), open=should_open)
                 kids = sorted([(c, self.get_label(c)) for c in self.g.subjects(SKOS.broader, r)], key=lambda x: x[1].lower())
                 for child_uri, _ in kids: add_node_recursive(root_id, child_uri, set())
 
@@ -941,7 +958,7 @@ class HECTOREditor:
         self.log("🏥 Running rapid semantic health scan...")
         orphans = [self.get_label(s) for s in self.g.subjects(RDF.type, SKOS.Concept) if not list(self.g.objects(s, SKOS.broader)) and not list(self.g.objects(s, SKOS.topConceptOf))]
         if orphans: self.log(f"🚫 Stale orphan nodes detected: {', '.join(orphans)}")
-        else: self.log("✅ No orphan nodes. Validation clear.")
+        else: self.log("VAST VALIDATION: No orphan nodes found.")
 
     def run_fix_labels(self):
         """Automated string diagnostic repair routine mapping missing concept labels back directly from clean URI strings."""
