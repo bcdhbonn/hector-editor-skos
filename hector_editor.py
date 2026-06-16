@@ -1,14 +1,16 @@
 import json
 import os
+import sys
+import traceback
 import uuid
 import urllib.request
 import urllib.parse
 from tkinter import filedialog, messagebox, ttk
-import tkinter as tk  # Native Tkinter components utilized for deterministic layout constraints
+import tkinter as tk  # Native Tkinter utilized strictly for collapsing container physics
 import customtkinter as ctk
 from rdflib import Graph, Literal, RDF, SKOS, URIRef
 
-# Global persistent configuration registry path
+# Global database project configurations path
 CONFIG_FILE = "hector_config.json"
 
 
@@ -37,12 +39,15 @@ class HECTOREditor:
         # Multilingual ISO 639-1 language parameter registry
         self.all_possible_languages = ["en", "de", "fr", "es", "it", "la", "grc"]
         self.active_languages = ["en", "de"] 
-        self.tree_display_lang = "en"  # Speichert die aktuelle Sprache des Baums
         
         # Component caches mapping dynamic multilingual UI objects to runtime handlers
         self.lang_entries = {}      # Maps language codes to primary prefLabel ctk.CTkEntry widgets
         self.alt_label_frames = {}  # Maps language codes to child tk.Frame structures containing synonyms
         self.alt_label_widgets = {} # Maps language codes to active arrays of alternate label entry points
+
+        # Polyhierarchy dynamic arrays tracking multiple broader terms
+        self.parent_widgets_list = []
+        self.parents_master_frame = None
 
         self.entries = {}  # Initialize the entry registry properly before building components
 
@@ -54,7 +59,7 @@ class HECTOREditor:
 
         # UI BUGFIX: Clear fields ONLY after the UI components have been completely mapped into existence
         self.clear_all_editor_fields()
-        if hasattr(self, 'remembered_path') and self.remembered_path and os.path.exists(self.remembered_path):
+        if self.remembered_path and os.path.exists(self.remembered_path):
             self.load_data(self.remembered_path)
 
     def build_ui(self):
@@ -85,8 +90,6 @@ class HECTOREditor:
 
         self.switch_theme = ctk.CTkSwitch(self.header_frame, text="Dark Mode", command=self.toggle_theme, font=("Arial", 12))
         self.switch_theme.grid(row=0, column=1, sticky="e")
-        if ctk.get_appearance_mode() == "Dark":
-            self.switch_theme.select()
 
         # File System Initialization Triggers
         self.btn_open = ctk.CTkButton(self.left_frame, text="Import / Open Vocabulary (.ttl)", command=self.open_file_dialog, fg_color="#2fa572", hover_color="#107c41", font=("Arial", 12))
@@ -98,21 +101,9 @@ class HECTOREditor:
         self.lbl_search_header = ctk.CTkLabel(self.left_frame, text="🔍 SEARCH & HIERARCHY", font=("Arial", 12))
         self.lbl_search_header.grid(row=3, column=0, padx=15, pady=(5, 0), sticky="w")
 
-        # Dropdown-Menü zur Auswahl der Anzeigesprache im Baum
-        self.tree_lang_var = ctk.StringVar(value=self.tree_display_lang)
-        self.opt_tree_lang = ctk.CTkOptionMenu(
-            self.left_frame, 
-            values=self.all_possible_languages, 
-            variable=self.tree_lang_var, 
-            command=self.change_tree_language,
-            font=("Arial", 12),
-            height=28
-        )
-        self.opt_tree_lang.grid(row=4, column=0, padx=15, pady=5, sticky="ew")
-
         # Interactive String Interception Filter Entry
         self.txt_search = ctk.CTkEntry(self.left_frame, placeholder_text="Type to filter hierarchy...", font=("Arial", 12))
-        self.txt_search.grid(row=5, column=0, padx=15, pady=5, sticky="ew")
+        self.txt_search.grid(row=4, column=0, padx=15, pady=5, sticky="ew")
         self.txt_search.bind("<KeyRelease>", lambda e: self.update_tree_ui())
 
         # Native Treeview Component Integration for Advanced SKOS Hierarchy Rendering
@@ -164,7 +155,7 @@ class HECTOREditor:
         self.btn_del_c = ctk.CTkButton(self.crud_btn_frame, text="🗑️ Delete Concept", fg_color="#a83232", hover_color="#7a2222", height=30, font=("Arial", 12), command=self.run_delete_concept)
         self.btn_del_c.grid(row=0, column=1, padx=(5, 0), sticky="ew")
 
-        # FORM MATRIX CONTAINER STABILIZATION:
+        # FORM MATRIX CONTAINER STABILIZATION
         self.form_frame = ctk.CTkFrame(self.right_frame, corner_radius=10, border_width=1)
         self.form_frame.grid(row=4, column=0, padx=15, pady=10, sticky="ew")
         self.form_frame.grid_columnconfigure(1, weight=1)
@@ -192,6 +183,10 @@ class HECTOREditor:
         self.out_tools = ctk.CTkTextbox(self.right_frame, height=100, fg_color="black", text_color="lightgreen", font=("Consolas", 12))
         self.out_tools.grid(row=8, column=0, padx=15, pady=(5, 15), sticky="ew")
 
+        # UI BUGFIX: Only evaluate and select the layout switch AFTER the frames are completely initialized.
+        if ctk.get_appearance_mode() == "Dark":
+            self.switch_theme.select()
+
     def toggle_theme(self):
         """Coordinates standard system look and feel parameter theme swapping safely."""
         if self.switch_theme.get() == 1:
@@ -204,7 +199,6 @@ class HECTOREditor:
 
     def rebuild_form_grid(self):
         """Forces a razor-sharp tabular layout with aligned columns and zero vertical bloating"""
-        # LIFECYCLE PROTECTOR: Prevent state exceptions against cleared layout objects
         cached_vals = {}
         for k, v in self.entries.items():
             if hasattr(v, "winfo_exists") and v.winfo_exists():
@@ -229,6 +223,15 @@ class HECTOREditor:
             if valid_strings:
                 cached_alt_labels[lang] = valid_strings
 
+        cached_parents = []
+        if hasattr(self, "parent_widgets_list") and self.parent_widgets_list:
+            for e in self.parent_widgets_list:
+                if hasattr(e, "winfo_exists") and e.winfo_exists():
+                    try:
+                        val = e.get().strip()
+                        if val: cached_parents.append(val)
+                    except: pass
+
         for widget in self.form_frame.winfo_children():
             widget.destroy()
 
@@ -236,7 +239,6 @@ class HECTOREditor:
         bg_color = "#2b2b2b" if is_dark else "#eaeaea"
         text_color = "white" if is_dark else "black"
 
-        # Apply synchronized coloring context directly onto the CustomTkinter frame
         self.form_frame.configure(fg_color=bg_color)
 
         # GRID STRUCTURAL ALIGNMENT COLUMNS PROPORTIONS STABILIZATION:
@@ -253,16 +255,16 @@ class HECTOREditor:
             return
 
         # 1. Technical URI Field
-        tk.Label(self.form_frame, text="URI (Read-only):", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=(15, 3), sticky="w")
+        ctk.CTkLabel(self.form_frame, text="URI (Read-only):", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
         self.entries["uri"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12))
-        self.entries["uri"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=(15, 3), sticky="ew")
+        self.entries["uri"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=3, sticky="ew")
         if "uri" in cached_vals:
             self.entries["uri"].insert(0, cached_vals["uri"])
         self.entries["uri"].configure(state="disabled")
         current_row += 1
 
         # 2. CENTRAL LANGUAGE HEADER (DYNAMIC THEME COMPLIANT)
-        tk.Label(self.form_frame, text="Languages:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
+        ctk.CTkLabel(self.form_frame, text="Languages:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
         display_text = f"Selected: {', '.join([l.upper() for l in self.active_languages])}"
         
         if is_dark:
@@ -297,7 +299,7 @@ class HECTOREditor:
 
         for lang in self.active_languages:
             lang_label_text = f"prefLabel ({lang.upper()}):"
-            tk.Label(self.form_frame, text=lang_label_text, font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+            ctk.CTkLabel(self.form_frame, text=lang_label_text, font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
             
             self.lang_entries[lang] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12))
             self.lang_entries[lang].grid(row=current_row, column=1, padx=(5, 5), pady=3, sticky="ew")
@@ -309,8 +311,9 @@ class HECTOREditor:
             current_row += 1
 
             self.alt_label_widgets[lang] = []
+            # UI BUGFIX: Replaced with a native tk.Frame so empty synonym arrays collapse seamlessly to 0px height.
             self.alt_label_frames[lang] = tk.Frame(self.form_frame, bg=bg_color)
-            self.alt_label_frames[lang].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=0, sticky="ew")
+            self.alt_label_frames[lang].grid(row=current_row, column=1, columnspan=2, padx=(5, 0), pady=0, sticky="ew")
             self.alt_label_frames[lang].grid_columnconfigure(0, weight=1)
             
             if lang in cached_alt_labels:
@@ -320,63 +323,111 @@ class HECTOREditor:
             current_row += 1
 
         # 4. Definition Field
-        tk.Label(self.form_frame, text="skos:definition:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
+        ctk.CTkLabel(self.form_frame, text="skos:definition:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
         self.entries["def"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12))
         self.entries["def"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=4, sticky="ew")
         if "def" in cached_vals: self.entries["def"].insert(0, cached_vals["def"])
         current_row += 1
 
-        # 5. Parent Link Allocation Field
-        tk.Label(self.form_frame, text="Parent:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
-        self.entries["broad"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12), placeholder_text="Type to find parent...")
-        self.entries["broad"].grid(row=current_row, column=1, padx=(5, 5), pady=4, sticky="ew")
-        self.entries["broad"].bind("<KeyRelease>", self.handle_entry_search)
-        if "broad" in cached_vals: self.entries["broad"].insert(0, cached_vals["broad"])
+        # 5. Parent Link Allocation Field (TERMINOLOGY UPGRADE TO BROADER TERM & PIXEL-PERFECT FLUSH ALIGNMENT)
+        ctk.CTkLabel(self.form_frame, text="Broader Terms:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
+        
+        btn_add_parent = ctk.CTkButton(self.form_frame, text="+ Broader Term", width=160, height=26, fg_color="#3a3a3a", font=("Arial", 12), command=self.add_parent_row)
+        btn_add_parent.grid(row=current_row, column=2, padx=(5, 15), pady=4, sticky="e")
+        current_row += 1
 
-        self.btn_set_top = ctk.CTkButton(self.form_frame, text="Make Top Concept", width=160, height=26, fg_color="#6e6e6e", hover_color="#525252", font=("Arial", 12), command=self.clear_parent_to_top)
-        self.btn_set_top.grid(row=current_row, column=2, padx=(5, 15), pady=4, sticky="e")
+        self.parent_widgets_list = []
+        # UI BUGFIX: Replaced with native tk.Frame so empty hierarchy containers collapse seamlessly to 0px height.
+        self.parents_master_frame = tk.Frame(self.form_frame, bg=bg_color)
+        self.parents_master_frame.grid(row=current_row, column=1, columnspan=2, padx=(5, 0), pady=0, sticky="ew")
+        self.parents_master_frame.grid_columnconfigure(0, weight=1)
+        
+        if cached_parents:
+            for parent_string in cached_parents:
+                self.add_parent_row(initial_text=parent_string)
         current_row += 1
 
         # 6. Alignment Reference Matches
-        tk.Label(self.form_frame, text="Wikidata Match:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+        ctk.CTkLabel(self.form_frame, text="Wikidata Match:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
         self.entries["match_wiki"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12), placeholder_text="http://www.wikidata.org/entity/Q...")
         self.entries["match_wiki"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=3, sticky="ew")
         if "match_wiki" in cached_vals: self.entries["match_wiki"].insert(0, cached_vals["match_wiki"])
         current_row += 1
 
-        tk.Label(self.form_frame, text="Getty AAT Match:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+        ctk.CTkLabel(self.form_frame, text="Getty AAT Match:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
         self.entries["match_aat"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12), placeholder_text="http://vocab.getty.edu/aat/...")
         self.entries["match_aat"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=3, sticky="ew")
         if "match_aat" in cached_vals: self.entries["match_aat"].insert(0, cached_vals["match_aat"])
         current_row += 1
 
-        tk.Label(self.form_frame, text="GND Match:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+        ctk.CTkLabel(self.form_frame, text="GND ID Match:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
         self.entries["match_gnd"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12), placeholder_text="https://d-nb.info/gnd/...")
-        self.entries["match_gnd"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=(3, 15), sticky="ew")
+        self.entries["match_gnd"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=3, sticky="ew")
         if "match_gnd" in cached_vals: self.entries["match_gnd"].insert(0, cached_vals["match_gnd"])
 
     def add_alt_label_row(self, lang, initial_text=""):
         """Appends an alternative alias expression entry row safely targeting designated language subsets."""
-        is_dark = ctk.get_appearance_mode() == "Dark"
-        bg_color = "#2b2b2b" if is_dark else "#eaeaea"
+        if lang not in self.alt_label_frames or not self.alt_label_frames[lang].winfo_exists():
+            return
+            
+        master_container = self.alt_label_frames[lang]
+        row_idx = len(self.alt_label_widgets[lang])
         
-        row_frame = tk.Frame(self.alt_label_frames[lang], bg=bg_color)
-        row_frame.pack(fill="x", pady=1)
+        # UI BUGFIX: Synchronized sub-grid column logic for flush button alignment matching the main layout layout
+        row_container = ctk.CTkFrame(master_container, fg_color="transparent")
+        row_container.grid(row=row_idx, column=0, sticky="ew", pady=1)
+        row_container.grid_columnconfigure(0, weight=1)
+        row_container.grid_columnconfigure(1, weight=0, minsize=170)
         
-        entry = ctk.CTkEntry(row_frame, placeholder_text=f"Synonym ({lang.upper()})...", height=24, font=("Arial", 12))
-        entry.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        entry = ctk.CTkEntry(row_container, placeholder_text=f"Synonym ({lang.upper()})...", height=24, font=("Arial", 12))
+        entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
         if initial_text: entry.insert(0, initial_text)
             
         self.alt_label_widgets[lang].append(entry)
         
-        btn_del = ctk.CTkButton(row_frame, text="✕", width=20, height=24, fg_color="#5a2222", hover_color="#421414", font=("Arial", 12), command=lambda: self.remove_alt_label_row(lang, row_frame, entry))
-        btn_del.pack(side="right")
+        btn_del = ctk.CTkButton(row_container, text="✕", width=60, height=24, fg_color="#5a2222", hover_color="#421414", font=("Arial", 12), command=lambda: self.remove_alt_label_row(lang, row_container, entry))
+        btn_del.grid(row=0, column=1, sticky="e", padx=(5, 15))
+        
+        self.form_frame.update_idletasks()
 
-    def remove_alt_label_row(self, lang, row_frame, entry_widget):
+    def remove_alt_label_row(self, lang, row_container, entry_widget):
         """Disposes of alternate synonym fields and forces a layout geometric refresh cycle."""
         if entry_widget in self.alt_label_widgets[lang]: 
             self.alt_label_widgets[lang].remove(entry_widget)
-        row_frame.destroy()
+        row_container.destroy()
+        self.form_frame.update_idletasks()
+
+    def add_parent_row(self, initial_text=""):
+        """Appends a new parent relation entry row dynamically to handle polyhierarchies."""
+        if not self.parents_master_frame or not self.parents_master_frame.winfo_exists():
+            return
+            
+        row_idx = len(self.parent_widgets_list)
+        
+        # UI BUGFIX: Synchronized sub-grid column logic for flush button alignment matching the main layout layout
+        row_container = ctk.CTkFrame(self.parents_master_frame, fg_color="transparent")
+        row_container.grid(row=row_idx, column=0, sticky="ew", pady=2)
+        row_container.grid_columnconfigure(0, weight=1)
+        row_container.grid_columnconfigure(1, weight=0, minsize=170)
+        
+        entry = ctk.CTkEntry(row_container, placeholder_text="Type to find broader term...", height=28, font=("Arial", 12))
+        entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        entry.bind("<KeyRelease>", self.handle_entry_search)
+        if initial_text: 
+            entry.insert(0, initial_text)
+            
+        self.parent_widgets_list.append(entry)
+        
+        btn_del = ctk.CTkButton(row_container, text="✕", width=60, height=28, fg_color="#5a2222", hover_color="#421414", font=("Arial", 12), command=lambda: self.remove_parent_row(row_container, entry))
+        btn_del.grid(row=0, column=1, sticky="e", padx=(5, 15))
+        
+        self.form_frame.update_idletasks()
+
+    def remove_parent_row(self, row_container, entry_widget):
+        """Removes a parent entity field and forces layout geometric updates context."""
+        if entry_widget in self.parent_widgets_list:
+            self.parent_widgets_list.remove(entry_widget)
+        row_container.destroy()
         self.form_frame.update_idletasks()
 
     def toggle_language_dropdown_popup(self):
@@ -433,10 +484,6 @@ class HECTOREditor:
         self.active_languages.append(code)
         self.close_language_dropdown_popup()
         self.rebuild_form_grid()
-        
-        # NEU: Dropdown über dem Baum um die neue Sprache erweitern
-        if hasattr(self, "opt_tree_lang"):
-            self.opt_tree_lang.configure(values=self.all_possible_languages)
 
     def fetch_from_wikidata(self):
         """Dispatches external HTTP queries to find matching entities to automate mapping."""
@@ -485,7 +532,7 @@ class HECTOREditor:
         lbl.pack(pady=10)
 
         scroll_box = ctk.CTkScrollableFrame(self.wiki_window, width=700, height=380)
-        scroll_box.pack(fill="both", expand=True, padx=15, pady=10)
+        scroll_box.pack(fill="both", expand=True)
 
         for match in results:
             q_id = match["id"]
@@ -532,7 +579,7 @@ class HECTOREditor:
 
                 descriptions = entity.get("descriptions", {})
                 en_desc = descriptions.get("en", {}).get("value", "")
-                fallback_desc = en_desc if en_desc else next(iter(descriptions.values()), {}).get("value", "")
+                fallback_desc = f"{en_desc if en_desc else next(iter(descriptions.values()), {}).get('value', '')}"
                 if fallback_desc and "def" in self.entries and self.entries["def"].winfo_exists():
                     self.entries["def"].delete(0, "end")
                     self.entries["def"].insert(0, fallback_desc)
@@ -595,10 +642,17 @@ class HECTOREditor:
         if "match_gnd" in self.entries and self.entries["match_gnd"].winfo_exists() and self.entries["match_gnd"].get().strip(): 
             self.g.add((uri, SKOS.exactMatch, URIRef(self.entries["match_gnd"].get().strip())))
 
-        broad_val = self.entries["broad"].get().strip() if ("broad" in self.entries and self.entries["broad"].winfo_exists()) else ""
-        if broad_val and broad_val in self.parent_lookup: 
-            self.g.add((uri, SKOS.broader, self.parent_lookup[broad_val]))
-        else: 
+        # Save multiple parents (Polyhierarchy compilation logic)
+        has_parents = False
+        for entry_widget in self.parent_widgets_list:
+            if entry_widget.winfo_exists():
+                broad_val = entry_widget.get().strip()
+                if broad_val and broad_val in self.parent_lookup:
+                    self.g.add((uri, SKOS.broader, self.parent_lookup[broad_val]))
+                    has_parents = True
+                    
+        # If no explicit parents are defined, map the node back into the root concept pool
+        if not has_parents:
             self.g.add((uri, SKOS.topConceptOf, self.scheme_uri))
             self.g.add((self.scheme_uri, SKOS.hasTopConcept, uri))
 
@@ -646,9 +700,15 @@ class HECTOREditor:
 
         if "def" in self.entries and self.entries["def"].winfo_exists():
             self.entries["def"].insert(0, next((str(d) for d in self.g.objects(uri, SKOS.definition)), ""))
-        if "broad" in self.entries and self.entries["broad"].winfo_exists():
-            p = list(self.g.objects(uri, SKOS.broader))
-            if p: self.entries["broad"].insert(0, self.get_label(p[0]))
+            
+        # Hydrate all existing historical skos:broader links into the polyhierarchical rows container
+        broader_uris = list(self.g.objects(uri, SKOS.broader))
+        if broader_uris:
+            for broader_uri in broader_uris:
+                self.add_parent_row(initial_text=self.get_label(broader_uri))
+        else:
+            # UI MANDATORY REGULATION: Instantly push exactly one blank input baseline if no properties exist
+            self.add_parent_row()
         
         matches = list(self.g.objects(uri, SKOS.exactMatch))
         for m in matches:
@@ -675,40 +735,44 @@ class HECTOREditor:
                 for child in frame.winfo_children(): child.destroy()
                 
         self.alt_label_widgets = {lang: [] for lang in self.all_possible_languages}
-        for field in ["def", "broad", "match_wiki", "match_aat", "match_gnd"]: 
+        
+        if self.parents_master_frame and self.parents_master_frame.winfo_exists():
+            for child in self.parents_master_frame.winfo_children(): child.destroy()
+        self.parent_widgets_list = []
+
+        for field in ["def", "match_wiki", "match_aat", "match_gnd"]: 
             if field in self.entries and self.entries[field].winfo_exists():
                 self.entries[field].delete(0, "end")
 
     def handle_entry_search(self, event):
-        """Renders asynchronous autocompletion options dropdown overlay panes."""
-        if "broad" not in self.entries or not self.entries["broad"].winfo_exists(): return
-        val = self.entries["broad"].get().lower().strip()
+        """Renders asynchronous autocompletion options dropdown overlay panes matching the specific triggering input widget."""
+        target_entry = event.widget
+        val = target_entry.get().lower().strip()
         if self.search_popup: self.search_popup.destroy(); self.search_popup = None
         if not val or not self.parent_lookup: return
         matches = [item for item in self.parent_lookup.keys() if val in item.lower()]
         if not matches: return
-        x = self.entries["broad"].winfo_rootx()
-        y = self.entries["broad"].winfo_rooty() + self.entries["broad"].winfo_height()
+        
+        x = target_entry.winfo_rootx()
+        y = target_entry.winfo_rooty() + target_entry.winfo_height()
         self.search_popup = ctk.CTkToplevel(self.root)
         self.search_popup.wm_overrideredirect(True)
-        self.search_popup.wm_geometry(f"{self.entries['broad'].winfo_width()}x150+{x}+{y}")
+        self.search_popup.wm_geometry(f"{target_entry.winfo_width()}x150+{x}+{y}")
         scroll_box = ctk.CTkScrollableFrame(self.search_popup, label_text="Matches found:")
         scroll_box.pack(fill="both", expand=True)
         for match in matches[:30]:
-            btn = ctk.CTkButton(scroll_box, text=match, anchor="w", fg_color="transparent", text_color=("black", "white"), hover_color=("#dbdbdb", "#2b2b2b"), height=24, font=("Arial", 12), command=lambda m=match: self.select_parent_from_popup(m))
+            btn = ctk.CTkButton(scroll_box, text=match, anchor="w", fg_color="transparent", text_color=("black", "white"), hover_color=("#dbdbdb", "#2b2b2b"), height=24, font=("Arial", 12), command=lambda m=match, e=target_entry: self.select_parent_from_popup(m, e))
             btn.pack(fill="x")
 
-    def select_parent_from_popup(self, match_value):
-        """Applies chosen inline metadata selection variable directly onto field text strings."""
-        if "broad" in self.entries and self.entries["broad"].winfo_exists():
-            self.entries["broad"].delete(0, "end")
-            self.entries["broad"].insert(0, match_value)
+    def select_parent_from_popup(self, match_value, target_entry):
+        """Applies chosen inline metadata selection variable directly onto the target input element."""
+        if target_entry.winfo_exists():
+            target_entry.delete(0, "end")
+            target_entry.insert(0, match_value)
         if self.search_popup: self.search_popup.destroy(); self.search_popup = None
 
     def clear_parent_to_top(self):
         """Purges contextual link parameters to bind the element to the schema collection root."""
-        if "broad" in self.entries and self.entries["broad"].winfo_exists():
-            self.entries["broad"].delete(0, "end")
         if self.search_popup: self.search_popup.destroy(); self.search_popup = None
 
     def load_config(self):
@@ -750,21 +814,16 @@ class HECTOREditor:
         self.save_config()
         self.root.destroy()
 
-    def open_file_dialog(self):
-        """Öffnet den System-Dialog zum Importieren einer Turtle-Datei."""
-        path = filedialog.askopenfilename(
-            title="Vokabular öffnen",
-            filetypes=[("Turtle Files", "*.ttl"), ("All Files", "*.*")]
-        )
-        if path:
-            self.load_data(path)
+    def log(self, msg):
+        """Forwards standard diagnostics info strings to log tracing interfaces."""
+        self.out_tools.insert("end", msg + "\n")
+        self.out_tools.see("end")
 
-    def log(self, message):
-        """Routet Systemnachrichten in das Diagnose-Panel und die Konsole."""
-        print(message)
-        if hasattr(self, 'out_tools') and self.out_tools.winfo_exists():
-            self.out_tools.insert("end", message + "\n")
-            self.out_tools.see("end")  # Auto-Scroll nach unten
+    def open_file_dialog(self):
+        """Coordinates system path file pickers to target a valid SKOS Turtle definition dataset."""
+        initial_dir = os.path.dirname(self.current_file_path) if self.current_file_path else os.path.expanduser("~")
+        path = filedialog.askopenfilename(initialdir=initial_dir, filetypes=[("Turtle Files", "*.ttl")])
+        if path: self.load_data(path)
 
     def load_data(self, path):
         """Reads targeted data inputs, compiling strings straight into internal RDF graphs."""
@@ -780,6 +839,10 @@ class HECTOREditor:
             # Rebuild grid context dynamically to clean layout pipelines safely
             self.rebuild_form_grid()
             self.clear_all_editor_fields()
+            
+            # Seed default mandatory parent row on baseline data layer mount
+            self.add_parent_row()
+            
             self.update_tree_ui()
             self.log(f"🏛 *Vocabulary imported safely:* {os.path.basename(path)}")
         except Exception as e: messagebox.showerror("IO Error", f"Could not load graph file:\n{e}")
@@ -787,18 +850,9 @@ class HECTOREditor:
     def get_label(self, uri):
         """Utility transformer unpacking machine-readable URIs out to intuitive local human label strings."""
         labels = list(self.g.objects(uri, SKOS.prefLabel))
-        
-        # 1. Priorität: Die aktuell im Dropdown gewählte Sprache
-        for l in labels:
-            if l.language == getattr(self, "tree_display_lang", "en"):
-                return str(l)
-                
-        # 2. Priorität: Fallback auf irgendeine bekannte Sprache
         for lang in self.all_possible_languages:
             for l in labels:
                 if l.language == lang: return str(l)
-                
-        # 3. Priorität: Irgendein Label, oder falls keines existiert, die pure URI
         if labels: return str(labels[0])
         return str(uri).split("#")[-1] if "#" in str(uri) else str(uri).split("/")[-1]
 
@@ -826,11 +880,6 @@ class HECTOREditor:
                 kids = sorted([(c, self.get_label(c)) for c in self.g.subjects(SKOS.broader, r)], key=lambda x: x[1].lower())
                 for child_uri, _ in kids: add_node_recursive(root_id, child_uri, set())
 
-    def change_tree_language(self, choice):
-        """Wechselt die Anzeigesprache des Baums und triggert einen Redraw."""
-        self.tree_display_lang = choice
-        self.update_tree_ui()
-
     def run_create_vocab(self):
         """Initializes an empty compliant SKOS metadata schema file placeholder directly out to structural storage targets."""
         path = filedialog.asksaveasfilename(defaultextension=".ttl", filetypes=[("Turtle Files", "*.ttl")])
@@ -851,6 +900,10 @@ class HECTOREditor:
             return
             
         self.rebuild_form_grid()
+        self.clear_all_editor_fields()
+        
+        # Enforce baseline first broader term field visibility right away
+        self.add_parent_row()
         
         if "uri" in self.entries and self.entries["uri"].winfo_exists():
             self.entries["uri"].configure(state="normal")
@@ -858,17 +911,6 @@ class HECTOREditor:
             self.entries["uri"].insert(0, f"http://example.org/concept_{uuid.uuid4().hex[:8]}")
             self.entries["uri"].configure(state="disabled")
             
-        for f in ["def", "match_wiki", "match_aat", "match_gnd", "broad"]: 
-            if f in self.entries and self.entries[f].winfo_exists(): self.entries[f].delete(0, "end")
-            
-        for widget in self.lang_entries.values(): 
-            if widget.winfo_exists(): widget.delete(0, "end")
-            
-        for frame in self.alt_label_frames.values():
-            if frame.winfo_exists():
-                for child in frame.winfo_children(): child.destroy()
-                
-        self.alt_label_widgets = {lang: [] for lang in self.all_possible_languages}
         self.log("✨ New concept initialization layout ready.")
 
     def run_delete_concept(self):
@@ -898,7 +940,7 @@ class HECTOREditor:
         self.log("🏥 Running rapid semantic health scan...")
         orphans = [self.get_label(s) for s in self.g.subjects(RDF.type, SKOS.Concept) if not list(self.g.objects(s, SKOS.broader)) and not list(self.g.objects(s, SKOS.topConceptOf))]
         if orphans: self.log(f"🚫 Stale orphan nodes detected: {', '.join(orphans)}")
-        else: self.log("✅ No orphan nodes. Validation clear.")
+        else: self.log("VAST VALIDATION: No orphan nodes found.")
 
     def run_fix_labels(self):
         """Automated string diagnostic repair routine mapping missing concept labels back directly from clean URI strings."""
@@ -915,6 +957,21 @@ class HECTOREditor:
         self.update_tree_ui()
         self.log(f"✅ Success. Repaired {c_uri} concept resources.")
 
+
+def global_crash_interceptor(exctype, value, tb):
+    """
+    CRASH MONITOR: Catches all silent runtime exceptions, registers structural traces
+    directly inside local storage paths, and flashes native modal window blocks.
+    """
+    error_msg = "".join(traceback.format_exception(exctype, value, tb))
+    with open("crash_log.txt", "w") as f:
+        f.write(error_msg)
+    messagebox.showerror("HECTOR-Editor Crash Detected", f"Fatal initialization error caught!\n\nTraceback logged to 'crash_log.txt'.\n\nError: {value}")
+    sys.__excepthook__(exctype, value, tb)
+
+
+# Register global diagnostic context handler before running the loop thread
+sys.excepthook = global_crash_interceptor
 
 if __name__ == "__main__":
     root = ctk.CTk()
