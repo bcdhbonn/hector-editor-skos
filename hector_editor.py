@@ -6,7 +6,7 @@ import uuid
 import urllib.request
 import urllib.parse
 from tkinter import filedialog, messagebox, ttk
-import tkinter as tk  # Native Tkinter utilized strictly for collapsing container physics
+import tkinter as tk  # Native Tkinter components utilized strictly for collapsing container physics
 import customtkinter as ctk
 from rdflib import Graph, Literal, RDF, SKOS, URIRef
 
@@ -155,9 +155,9 @@ class HECTOREditor:
         self.btn_del_c = ctk.CTkButton(self.crud_btn_frame, text="🗑️ Delete Concept", fg_color="#a83232", hover_color="#7a2222", height=30, font=("Arial", 12), command=self.run_delete_concept)
         self.btn_del_c.grid(row=0, column=1, padx=(5, 0), sticky="ew")
 
-        # FORM MATRIX CONTAINER STABILIZATION
+        # FORM MATRIX CONTAINER STABILIZATION: Increased vertical layout padding from 10 to 25
         self.form_frame = ctk.CTkFrame(self.right_frame, corner_radius=10, border_width=1)
-        self.form_frame.grid(row=4, column=0, padx=15, pady=10, sticky="ew")
+        self.form_frame.grid(row=4, column=0, padx=15, pady=25, sticky="ew")
         self.form_frame.grid_columnconfigure(1, weight=1)
 
         self.rebuild_form_grid()
@@ -254,10 +254,10 @@ class HECTOREditor:
         if not self.current_file_path:
             return
 
-        # 1. Technical URI Field
-        ctk.CTkLabel(self.form_frame, text="URI (Read-only):", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+        # 1. Technical URI Field: Added top cushion space inside the inner block frame mapping
+        ctk.CTkLabel(self.form_frame, text="URI (Read-only):", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=(15, 3), sticky="w")
         self.entries["uri"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12))
-        self.entries["uri"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=3, sticky="ew")
+        self.entries["uri"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=(15, 3), sticky="ew")
         if "uri" in cached_vals:
             self.entries["uri"].insert(0, cached_vals["uri"])
         self.entries["uri"].configure(state="disabled")
@@ -329,22 +329,23 @@ class HECTOREditor:
         if "def" in cached_vals: self.entries["def"].insert(0, cached_vals["def"])
         current_row += 1
 
-        # 5. Parent Link Allocation Field (TERMINOLOGY UPGRADE TO BROADER TERM & PIXEL-PERFECT FLUSH ALIGNMENT)
-        ctk.CTkLabel(self.form_frame, text="Broader Terms:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
+        # 5. Parent Link Allocation Field (INLINE SINGLE-ROW OR POLYHIERARCHICAL STRUCTURAL ALIGNMENT)
+        ctk.CTkLabel(self.form_frame, text="Broader Term:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
         
-        btn_add_parent = ctk.CTkButton(self.form_frame, text="+ Broader Term", width=160, height=26, fg_color="#3a3a3a", font=("Arial", 12), command=self.add_parent_row)
+        btn_add_parent = ctk.CTkButton(self.form_frame, text="+ Broader", width=160, height=26, fg_color="#3a3a3a", font=("Arial", 12), command=self.add_parent_row)
         btn_add_parent.grid(row=current_row, column=2, padx=(5, 15), pady=4, sticky="e")
-        current_row += 1
 
         self.parent_widgets_list = []
         # UI BUGFIX: Replaced with native tk.Frame so empty hierarchy containers collapse seamlessly to 0px height.
         self.parents_master_frame = tk.Frame(self.form_frame, bg=bg_color)
-        self.parents_master_frame.grid(row=current_row, column=1, columnspan=2, padx=(5, 0), pady=0, sticky="ew")
+        self.parents_master_frame.grid(row=current_row, column=1, padx=(5, 0), pady=0, sticky="ew")
         self.parents_master_frame.grid_columnconfigure(0, weight=1)
         
         if cached_parents:
             for parent_string in cached_parents:
                 self.add_parent_row(initial_text=parent_string)
+        else:
+            self.add_parent_row()
         current_row += 1
 
         # 6. Alignment Reference Matches
@@ -360,9 +361,9 @@ class HECTOREditor:
         if "match_aat" in cached_vals: self.entries["match_aat"].insert(0, cached_vals["match_aat"])
         current_row += 1
 
-        ctk.CTkLabel(self.form_frame, text="GND ID Match:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+        ctk.CTkLabel(self.form_frame, text="GND ID Match:", font=("Arial", 12), text_color=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=(3, 15), sticky="w")
         self.entries["match_gnd"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12), placeholder_text="https://d-nb.info/gnd/...")
-        self.entries["match_gnd"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=3, sticky="ew")
+        self.entries["match_gnd"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=(3, 15), sticky="ew")
         if "match_gnd" in cached_vals: self.entries["match_gnd"].insert(0, cached_vals["match_gnd"])
 
     def add_alt_label_row(self, lang, initial_text=""):
@@ -579,7 +580,7 @@ class HECTOREditor:
 
                 descriptions = entity.get("descriptions", {})
                 en_desc = descriptions.get("en", {}).get("value", "")
-                fallback_desc = f"{en_desc if en_desc else next(iter(descriptions.values()), {}).get('value', '')}"
+                fallback_desc = en_desc if en_desc else next(iter(descriptions.values()), {}).get("value", "")
                 if fallback_desc and "def" in self.entries and self.entries["def"].winfo_exists():
                     self.entries["def"].delete(0, "end")
                     self.entries["def"].insert(0, fallback_desc)
@@ -940,7 +941,7 @@ class HECTOREditor:
         self.log("🏥 Running rapid semantic health scan...")
         orphans = [self.get_label(s) for s in self.g.subjects(RDF.type, SKOS.Concept) if not list(self.g.objects(s, SKOS.broader)) and not list(self.g.objects(s, SKOS.topConceptOf))]
         if orphans: self.log(f"🚫 Stale orphan nodes detected: {', '.join(orphans)}")
-        else: self.log("VAST VALIDATION: No orphan nodes found.")
+        else: self.log("✅ No orphan nodes. Validation clear.")
 
     def run_fix_labels(self):
         """Automated string diagnostic repair routine mapping missing concept labels back directly from clean URI strings."""
