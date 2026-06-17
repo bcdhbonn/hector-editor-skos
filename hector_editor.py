@@ -22,7 +22,7 @@ class HECTOREditor:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("HECTOR-Editor Pro")
+        self.root.title("HECTOR-Editor")
         self.root.geometry("1350x920")
 
         # Core semantic triplestore graph structures and internal runtime states
@@ -77,7 +77,7 @@ class HECTOREditor:
         self.header_frame.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="ew")
         self.header_frame.grid_columnconfigure(0, weight=1)
 
-        self.lbl_file_header = ctk.CTkLabel(self.header_frame, text="🏛️ HECTOR-EDITOR PRO", font=("Arial", 12, "bold"))
+        self.lbl_file_header = ctk.CTkLabel(self.header_frame, text="🏛️ HECTOR-EDITOR", font=("Arial", 12,))
         self.lbl_file_header.grid(row=0, column=0, sticky="w")
 
         self.switch_theme = ctk.CTkSwitch(self.header_frame, text="Dark Mode", command=self.toggle_theme, font=("Arial", 12))
@@ -141,15 +141,15 @@ class HECTOREditor:
         self.right_frame.grid(row=0, column=1, padx=15, pady=15, sticky="nsew")
         self.right_frame.grid_columnconfigure(0, weight=1)
 
-        # REMOVED: Create New Vocabulary fields completely cleaned from right frame
-        self.lbl_editor = ctk.CTkLabel(self.right_frame, text="✏️ CONCEPT EDITOR", font=("Arial", 12, "bold"))
+   
+        self.lbl_editor = ctk.CTkLabel(self.right_frame, text="✏️ CONCEPT EDITOR", font=("Arial", 12))
         self.lbl_editor.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="w")
 
         self.crud_btn_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
         self.crud_btn_frame.grid(row=1, column=0, padx=15, pady=5, sticky="ew")
         self.crud_btn_frame.grid_columnconfigure((0, 1), weight=1)
 
-        self.btn_new_c = ctk.CTkButton(self.crud_btn_frame, text="➕ Create New Concept", fg_color="#1f538d", height=30, font=("Arial", 12), command=self.run_prepare_new_concept)
+        self.btn_new_c = ctk.CTkButton(self.crud_btn_frame, text="➕ Create Concept", fg_color="#1f538d", height=30, font=("Arial", 12), command=self.run_prepare_new_concept)
         self.btn_new_c.grid(row=0, column=0, padx=(0, 5), sticky="ew")
 
         self.btn_del_c = ctk.CTkButton(self.crud_btn_frame, text="🗑️ Delete Concept", fg_color="#a83232", hover_color="#7a2222", height=30, font=("Arial", 12), command=self.run_delete_concept)
@@ -164,7 +164,7 @@ class HECTOREditor:
         self.btn_save = ctk.CTkButton(self.right_frame, text="💾 Commit Changes / Save Concept", fg_color="#2fa572", hover_color="#107c41", height=35, font=("Arial", 12), command=self.on_save)
         self.btn_save.grid(row=3, column=0, padx=15, pady=10, sticky="ew")
 
-        self.lbl_tools = ctk.CTkLabel(self.right_frame, text="⚙️ DATA QUALITY ASSURANCE", font=("Arial", 12))
+        self.lbl_tools = ctk.CTkLabel(self.right_frame, text="⚙️ DATA QUALITY CHECK", font=("Arial", 12))
         self.lbl_tools.grid(row=4, column=0, padx=15, pady=(15, 5), sticky="w")
 
         self.tools_btn_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
