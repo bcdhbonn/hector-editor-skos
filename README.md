@@ -8,10 +8,11 @@ The editor features integrated APIs to directly link local concepts to major glo
 * **SKOS Hierarchy Management:** Visually construct and manage `skos:Concept` hierarchies, broader/narrower relationships, and top concepts.
 * **Multilingual Support:** Dynamic UI for managing `skos:prefLabel` and `skos:altLabel` across multiple ISO 639-1 language codes.
 * **Polyhierarchical Support:** DConcepts can be linked to multiple broader terms, allowing for a accurate representation of complex knowledge domains and multi-faceted semantic classification.
+* **Import and Export Suppoer:** Import and export of single terms and facettes
 * **Authority File Integration:** Built-in asynchronous querying and exact matching (`skos:exactMatch`) for:
     * Wikidata API
     * Getty Art & Architecture Thesaurus (AAT)
-    * Integrated Authority File (GND)
+    * Gemeinsame Normdate (GND)
 * **Data Quality Assurance:** Rapid semantic health scans to detect orphan nodes and auto-repair missing URI labels.
 * **Turtle Serialization:** Native import and export of robust `.ttl` (Turtle) graphs using RDFLib.
 
