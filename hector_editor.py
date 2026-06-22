@@ -5,19 +5,21 @@ import urllib.request
 import urllib.parse
 import sys
 import traceback
+import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-import tkinter as tk  
 import customtkinter as ctk
-from rdflib import Graph, Literal, RDF, SKOS, URIRef
+from rdflib import Graph, URIRef
+
+from hector_core import VocabularyManager
 
 CONFIG_FILE = "hector_config.json"
 
 
 class HECTOREditor:
     """
-    Main controller class for the HECTOR-Editor Pro (Integrated Authority Edition).
-    Manages semantic graph lifecycles via RDFLib, orchestrates external asynchronous
-    Wikidata API queries, and maintains a unified responsive GUI architecture.
+    Main controller class for the HECTOR-Editor.
+    Manages user interactions and responsive GUI layout.
+    Delegates all SKOS graph queries and modifications to VocabularyManager.
     """
 
     def __init__(self, root):
@@ -25,10 +27,11 @@ class HECTOREditor:
         self.root.title("HECTOR-Editor")
         self.root.geometry("1350x920")
 
-        # Core semantic triplestore graph structures and internal runtime states
-        self.g = Graph()
+        # Instantiate business logic core
+        self.mgr = VocabularyManager()
+        
         self.current_file_path = ""
-        self.scheme_uri = URIRef("http://vocabs.bcdh.uni-bonn.de/scheme")
+        self.scheme_uri = None
         self.parent_lookup = {}        
         self.delete_target_uri = None  
         self.search_popup = None
@@ -89,7 +92,7 @@ class HECTOREditor:
         self.btn_open = ctk.CTkButton(self.left_frame, text="Open Main Vocabulary (.ttl)", command=self.open_file_dialog, fg_color="#2fa572", hover_color="#107c41", font=("Arial", 12))
         self.btn_open.grid(row=1, column=0, padx=15, pady=3, sticky="ew")
 
-        # REPOSITIONED: Create New Vocabulary moved to left panel
+        # Create New Vocabulary
         self.btn_create_v = ctk.CTkButton(self.left_frame, text="✨ Create New Vocabulary", command=self.run_create_vocab, fg_color="#5a5a5a", hover_color="#454545", font=("Arial", 12))
         self.btn_create_v.grid(row=2, column=0, padx=15, pady=3, sticky="ew")
 
@@ -141,7 +144,6 @@ class HECTOREditor:
         self.right_frame.grid(row=0, column=1, padx=15, pady=15, sticky="nsew")
         self.right_frame.grid_columnconfigure(0, weight=1)
 
-   
         self.lbl_editor = ctk.CTkLabel(self.right_frame, text="✏️ CONCEPT EDITOR", font=("Arial", 12))
         self.lbl_editor.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="w")
 
@@ -149,7 +151,7 @@ class HECTOREditor:
         self.crud_btn_frame.grid(row=1, column=0, padx=15, pady=5, sticky="ew")
         self.crud_btn_frame.grid_columnconfigure((0, 1), weight=1)
 
-        self.btn_new_c = ctk.CTkButton(self.crud_btn_frame, text="➕ Create Concept", fg_color="#1f538d", height=30, font=("Arial", 12), command=self.run_prepare_new_concept)
+        self.btn_new_c = ctk.CTkButton(self.crud_btn_frame, text="➕ Create Concept", fg_color="#1f538d", hover_color="#153b66", height=30, font=("Arial", 12), command=self.run_prepare_new_concept)
         self.btn_new_c.grid(row=0, column=0, padx=(0, 5), sticky="ew")
 
         self.btn_del_c = ctk.CTkButton(self.crud_btn_frame, text="🗑️ Delete Concept", fg_color="#a83232", hover_color="#7a2222", height=30, font=("Arial", 12), command=self.run_delete_concept)
@@ -177,7 +179,7 @@ class HECTOREditor:
         self.btn_t_check = ctk.CTkButton(self.tools_btn_frame, text="🏥 Health Check", height=28, font=("Arial", 12), command=self.run_health_check)
         self.btn_t_check.grid(row=0, column=1, padx=(5, 0), sticky="ew")
 
-        self.out_tools = ctk.CTkTextbox(self.right_frame, height=100, fg_color="black", text_color="lightgreen", font=("Consolas", 12))
+        self.out_tools = ctk.CTkTextbox(self.right_frame, height=270, fg_color="black", text_color="white", font=("Consolas", 16))
         self.out_tools.grid(row=6, column=0, padx=15, pady=(5, 15), sticky="ew")
 
     def toggle_theme(self):
@@ -193,24 +195,7 @@ class HECTOREditor:
         self.update_tree_ui()
 
     def get_clean_namespace(self):
-        """Deduces a clean absolute HTTP namespace, prioritizing the explicit ConceptScheme URI."""
-        if self.scheme_uri:
-            sch_str = str(self.scheme_uri)
-            if (sch_str.startswith("http://") or sch_str.startswith("https://")) and not sch_str.startswith("file:"):
-                if not sch_str.endswith(("/", "#")): sch_str += "/"
-                return sch_str
-
-        for s in self.g.subjects(RDF.type, SKOS.Concept):
-            s_str = str(s)
-            if (s_str.startswith("http://") or s_str.startswith("https://")) and not s_str.startswith("file:"):
-                if "#" in s_str: return s_str.split("#")[0] + "#"
-                else: return "/".join(s_str.split("/")[:-1]) + "/"
-        
-        if self.current_file_path:
-            name = os.path.basename(self.current_file_path).replace(".ttl", "")
-            return f"http://vocabs.bcdh.uni-bonn.de/{name}/"
-            
-        return "http://vocabs.bcdh.uni-bonn.de/vocabulary/"
+        return self.mgr.get_clean_namespace()
 
     def rebuild_form_grid(self):
         cached_vals = {}
@@ -236,6 +221,15 @@ class HECTOREditor:
                     except: pass
             if valid_strings:
                 cached_alt_labels[lang] = valid_strings
+
+        cached_parents = []
+        if hasattr(self, "parent_widgets"):
+            for e in self.parent_widgets:
+                if hasattr(e, "winfo_exists") and e.winfo_exists():
+                    try:
+                        val = e.get().strip()
+                        if val: cached_parents.append(val)
+                    except: pass
 
         for widget in self.form_frame.winfo_children():
             widget.destroy()
@@ -320,14 +314,33 @@ class HECTOREditor:
         if "def" in cached_vals: self.entries["def"].insert(0, cached_vals["def"])
         current_row += 1
 
-        tk.Label(self.form_frame, text="Parent:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
-        self.entries["broad"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12), placeholder_text="Type to find parent...")
-        self.entries["broad"].grid(row=current_row, column=1, padx=(5, 5), pady=4, sticky="ew")
-        self.entries["broad"].bind("<KeyRelease>", self.handle_entry_search)
-        if "broad" in cached_vals: self.entries["broad"].insert(0, cached_vals["broad"])
+        tk.Label(self.form_frame, text="Parent(s):", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
+        
+        self.parent_widgets = []
+        self.first_parent_widget = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12), placeholder_text="Type to find parent...")
+        self.first_parent_widget.grid(row=current_row, column=1, padx=(5, 5), pady=4, sticky="ew")
+        self.first_parent_widget.bind("<KeyRelease>", lambda e, ent=self.first_parent_widget: self.handle_entry_search(e, ent))
+        self.parent_widgets.append(self.first_parent_widget)
+        if cached_parents:
+            self.first_parent_widget.insert(0, cached_parents[0])
 
-        self.btn_set_top = ctk.CTkButton(self.form_frame, text="Force Root", width=160, height=26, fg_color="#6e6e6e", hover_color="#525252", font=("Arial", 12), command=self.clear_parent_to_top)
-        self.btn_set_top.grid(row=current_row, column=2, padx=(5, 15), pady=4, sticky="e")
+        btn_frame = tk.Frame(self.form_frame, bg=bg_color)
+        btn_frame.grid(row=current_row, column=2, padx=(5, 15), pady=4, sticky="e")
+        
+        self.btn_set_top = ctk.CTkButton(btn_frame, text="Top Concept", width=95, height=26, fg_color="#6e6e6e", hover_color="#525252", font=("Arial", 12), command=self.clear_parent_to_top)
+        self.btn_set_top.pack(side="left", padx=(0, 5))
+
+        btn_add_parent = ctk.CTkButton(btn_frame, text="+ Parent", width=65, height=26, fg_color="#3a3a3a", font=("Arial", 12), command=self.add_parent_row)
+        btn_add_parent.pack(side="left")
+        current_row += 1
+
+        self.parent_frame = tk.Frame(self.form_frame, bg=bg_color)
+        self.parent_frame.grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=0, sticky="ew")
+        self.parent_frame.grid_columnconfigure(0, weight=1)
+        
+        if cached_parents and len(cached_parents) > 1:
+            for parent_val in cached_parents[1:]:
+                self.add_parent_row(initial_text=parent_val)
         current_row += 1
 
         tk.Label(self.form_frame, text="Wikidata Match:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
@@ -367,7 +380,31 @@ class HECTOREditor:
         if entry_widget in self.alt_label_widgets[lang]: 
             self.alt_label_widgets[lang].remove(entry_widget)
         row_frame.destroy()
-        self.form_frame.update_idletasks()
+        self.form_frame.update()
+
+    def add_parent_row(self, initial_text=""):
+        is_dark = ctk.get_appearance_mode() == "Dark"
+        bg_color = "#2b2b2b" if is_dark else "#eaeaea"
+        
+        row_frame = tk.Frame(self.parent_frame, bg=bg_color)
+        row_frame.pack(fill="x", pady=1)
+        
+        entry = ctk.CTkEntry(row_frame, placeholder_text="Type to find parent...", height=24, font=("Arial", 12))
+        entry.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        entry.bind("<KeyRelease>", lambda e, ent=entry: self.handle_entry_search(e, ent))
+        if initial_text: 
+            entry.insert(0, initial_text)
+            
+        self.parent_widgets.append(entry)
+        
+        btn_del = ctk.CTkButton(row_frame, text="✕", width=20, height=24, fg_color="#5a2222", hover_color="#421414", font=("Arial", 12), command=lambda: self.remove_parent_row(row_frame, entry))
+        btn_del.pack(side="right")
+
+    def remove_parent_row(self, row_frame, entry_widget):
+        if entry_widget in self.parent_widgets:
+            self.parent_widgets.remove(entry_widget)
+        row_frame.destroy()
+        self.form_frame.update()
 
     def toggle_language_dropdown_popup(self):
         if self.lang_popup: self.lang_popup.destroy(); self.lang_popup = None; return
@@ -541,40 +578,42 @@ class HECTOREditor:
         if not uri_str or not self.current_file_path: return
         uri = URIRef(uri_str)
 
-        for p in [SKOS.prefLabel, SKOS.altLabel, SKOS.definition, SKOS.broader, SKOS.topConceptOf]: 
-            self.g.remove((uri, p, None))
-        self.g.remove((None, SKOS.hasTopConcept, uri))
-
-        self.g.add((uri, RDF.type, SKOS.Concept))
-
+        # Retrieve prefLabels
+        pref_labels = []
         for lang, widget in self.lang_entries.items():
             if widget.winfo_exists():
                 text_val = widget.get().strip()
-                if text_val: self.g.add((uri, SKOS.prefLabel, Literal(text_val, lang=lang)))
+                if text_val: pref_labels.append((text_val, lang))
 
+        # Retrieve altLabels
+        alt_labels = []
         for lang, entries_list in self.alt_label_widgets.items():
             for ent_widget in entries_list:
                 if ent_widget.winfo_exists():
                     alt_val = ent_widget.get().strip()
-                    if alt_val: self.g.add((uri, SKOS.altLabel, Literal(alt_val, lang=lang)))
+                    if alt_val: alt_labels.append((alt_val, lang))
 
-        if "def" in self.entries and self.entries["def"].winfo_exists() and self.entries["def"].get().strip(): 
-            self.g.add((uri, SKOS.definition, Literal(self.entries["def"].get().strip())))
-        
-        for k, field in [("match_wiki", SKOS.exactMatch), ("match_aat", SKOS.exactMatch), ("match_gnd", SKOS.exactMatch)]:
-            if k in self.entries and self.entries[k].winfo_exists() and self.entries[k].get().strip():
-                self.g.add((uri, field, URIRef(self.entries[k].get().strip())))
+        # Retrieve definition
+        definition = self.entries["def"].get().strip() if ("def" in self.entries and self.entries["def"].winfo_exists()) else ""
 
-        broad_val = self.entries["broad"].get().strip() if ("broad" in self.entries and self.entries["broad"].winfo_exists()) else ""
-        if broad_val and broad_val in self.parent_lookup: 
-            self.g.add((uri, SKOS.broader, self.parent_lookup[broad_val]))
-        else: 
-            self.g.add((uri, SKOS.topConceptOf, self.scheme_uri))
-            self.g.add((self.scheme_uri, SKOS.hasTopConcept, uri))
+        # Retrieve exactMatch fields
+        match_wiki = self.entries["match_wiki"].get().strip() if ("match_wiki" in self.entries and self.entries["match_wiki"].winfo_exists()) else ""
+        match_aat = self.entries["match_aat"].get().strip() if ("match_aat" in self.entries and self.entries["match_aat"].winfo_exists()) else ""
+        match_gnd = self.entries["match_gnd"].get().strip() if ("match_gnd" in self.entries and self.entries["match_gnd"].winfo_exists()) else ""
 
-        self.g.serialize(destination=self.current_file_path, format="turtle")
+        # Retrieve parents
+        broader_parents = []
+        if hasattr(self, "parent_widgets"):
+            for widget in self.parent_widgets:
+                if widget.winfo_exists():
+                    p_val = widget.get().strip()
+                    if p_val and p_val in self.parent_lookup:
+                        broader_parents.append(str(self.parent_lookup[p_val]))
+
+        self.mgr.save_concept(uri, pref_labels, alt_labels, definition, match_wiki, match_aat, match_gnd, broader_parents)
         self.update_tree_ui()
         self.log(f"💾 Graph synced to file: {self.get_label(uri, lang=self.tree_lang)}")
+        self.display_turtle(uri)
 
     def on_tree_node_click(self, event):
         selected_item = self.tree.selection()
@@ -589,41 +628,50 @@ class HECTOREditor:
             self.entries["uri"].insert(0, str(uri))
             self.entries["uri"].configure(state="disabled")
         
-        for literal in self.g.objects(uri, SKOS.prefLabel):
-            if hasattr(literal, "language") and literal.language:
-                lang_code = literal.language
-                if lang_code not in self.all_possible_languages: self.all_possible_languages.append(lang_code)
+        # Load concept details via VocabularyManager
+        details = self.mgr.get_concept_details(uri)
 
-        for literal in self.g.objects(uri, SKOS.altLabel):
-            if hasattr(literal, "language") and literal.language:
-                lang_code = literal.language
-                if lang_code not in self.all_possible_languages: self.all_possible_languages.append(lang_code)
+        # Auto-detect language additions
+        for text_val, lang_code in details["pref_labels"]:
+            if lang_code not in self.all_possible_languages:
+                self.all_possible_languages.append(lang_code)
+                
+        for text_val, lang_code in details["alt_labels"]:
+            if lang_code not in self.all_possible_languages:
+                self.all_possible_languages.append(lang_code)
 
-        for literal in self.g.objects(uri, SKOS.prefLabel):
-            l_code = getattr(literal, "language", "de")
-            if l_code in self.lang_entries and self.lang_entries[l_code].winfo_exists():
-                self.lang_entries[l_code].delete(0, "end")
-                self.lang_entries[l_code].insert(0, str(literal))
+        # Populate prefLabels
+        for text_val, lang_code in details["pref_labels"]:
+            if lang_code in self.lang_entries and self.lang_entries[lang_code].winfo_exists():
+                self.lang_entries[lang_code].delete(0, "end")
+                self.lang_entries[lang_code].insert(0, text_val)
 
-        for literal in self.g.objects(uri, SKOS.altLabel):
-            l_code = getattr(literal, "language", "de")
-            self.add_alt_label_row(l_code, initial_text=str(literal))
+        # Populate altLabels
+        for text_val, lang_code in details["alt_labels"]:
+            self.add_alt_label_row(lang_code, initial_text=text_val)
 
+        # Populate definition
         if "def" in self.entries and self.entries["def"].winfo_exists():
-            self.entries["def"].insert(0, next((str(d) for d in self.g.objects(uri, SKOS.definition)), ""))
-        if "broad" in self.entries and self.entries["broad"].winfo_exists():
-            p = list(self.g.objects(uri, SKOS.broader))
-            if p: self.entries["broad"].insert(0, self.get_label(p[0], lang=self.tree_lang))
+            self.entries["def"].insert(0, details["definition"])
+
+        # Populate parents
+        if hasattr(self, "parent_frame") and self.parent_frame.winfo_exists():
+            parents = details["broaders"]
+            if parents:
+                if hasattr(self, "first_parent_widget") and self.first_parent_widget.winfo_exists():
+                    self.first_parent_widget.delete(0, "end")
+                    self.first_parent_widget.insert(0, self.get_label(URIRef(parents[0]), lang=self.tree_lang))
+                for p in parents[1:]:
+                    self.add_parent_row(initial_text=self.get_label(URIRef(p), lang=self.tree_lang))
         
-        matches = list(self.g.objects(uri, SKOS.exactMatch))
-        for m in matches:
-            m_str = str(m)
-            if "wikidata.org" in m_str and "match_wiki" in self.entries and self.entries["match_wiki"].winfo_exists(): 
-                self.entries["match_wiki"].insert(0, m_str)
-            elif "getty.edu" in m_str and "match_aat" in self.entries and self.entries["match_aat"].winfo_exists(): 
-                self.entries["match_aat"].insert(0, m_str)
-            elif "d-nb.info" in m_str and "match_gnd" in self.entries and self.entries["match_gnd"].winfo_exists(): 
-                self.entries["match_gnd"].insert(0, m_str)
+        # Populate exactMatch fields
+        if details["match_wiki"] and "match_wiki" in self.entries and self.entries["match_wiki"].winfo_exists(): 
+            self.entries["match_wiki"].insert(0, details["match_wiki"])
+        if details["match_aat"] and "match_aat" in self.entries and self.entries["match_aat"].winfo_exists(): 
+            self.entries["match_aat"].insert(0, details["match_aat"])
+        if details["match_gnd"] and "match_gnd" in self.entries and self.entries["match_gnd"].winfo_exists(): 
+            self.entries["match_gnd"].insert(0, details["match_gnd"])
+        self.display_turtle(uri)
 
     def clear_all_editor_fields(self):
         if "uri" in self.entries and self.entries["uri"].winfo_exists():
@@ -639,37 +687,47 @@ class HECTOREditor:
                 for child in frame.winfo_children(): child.destroy()
                 
         self.alt_label_widgets = {lang: [] for lang in self.all_possible_languages}
-        for field in ["def", "broad", "match_wiki", "match_aat", "match_gnd"]: 
+        for field in ["def", "match_wiki", "match_aat", "match_gnd"]: 
             if field in self.entries and self.entries[field].winfo_exists():
                 self.entries[field].delete(0, "end")
+        if hasattr(self, "first_parent_widget") and self.first_parent_widget.winfo_exists():
+            self.first_parent_widget.delete(0, "end")
+        if hasattr(self, "parent_frame") and self.parent_frame.winfo_exists():
+            for child in self.parent_frame.winfo_children():
+                child.destroy()
+        self.parent_widgets = [self.first_parent_widget] if hasattr(self, "first_parent_widget") else []
 
-    def handle_entry_search(self, event):
-        if "broad" not in self.entries or not self.entries["broad"].winfo_exists(): return
-        val = self.entries["broad"].get().lower().strip()
+    def handle_entry_search(self, event, entry_widget):
+        if not entry_widget.winfo_exists(): return
+        val = entry_widget.get().lower().strip()
         if self.search_popup: self.search_popup.destroy(); self.search_popup = None
         if not val or not self.parent_lookup: return
         matches = [item for item in self.parent_lookup.keys() if val in item.lower()]
         if not matches: return
-        x = self.entries["broad"].winfo_rootx()
-        y = self.entries["broad"].winfo_rooty() + self.entries["broad"].winfo_height()
+        x = entry_widget.winfo_rootx()
+        y = entry_widget.winfo_rooty() + entry_widget.winfo_height()
         self.search_popup = ctk.CTkToplevel(self.root)
         self.search_popup.wm_overrideredirect(True)
-        self.search_popup.wm_geometry(f"{self.entries['broad'].winfo_width()}x150+{x}+{y}")
+        self.search_popup.wm_geometry(f"{entry_widget.winfo_width()}x150+{x}+{y}")
         scroll_box = ctk.CTkScrollableFrame(self.search_popup, label_text="Matches found:")
         scroll_box.pack(fill="both", expand=True)
         for match in matches[:30]:
-            btn = ctk.CTkButton(scroll_box, text=match, anchor="w", fg_color="transparent", text_color=("black", "white"), hover_color=("#dbdbdb", "#2b2b2b"), height=24, font=("Arial", 12), command=lambda m=match: self.select_parent_from_popup(m))
+            btn = ctk.CTkButton(scroll_box, text=match, anchor="w", fg_color="transparent", text_color=("black", "white"), hover_color=("#dbdbdb", "#2b2b2b"), height=24, font=("Arial", 12), command=lambda m=match: self.select_parent_from_popup(m, entry_widget))
             btn.pack(fill="x")
 
-    def select_parent_from_popup(self, match_value):
-        if "broad" in self.entries and self.entries["broad"].winfo_exists():
-            self.entries["broad"].delete(0, "end")
-            self.entries["broad"].insert(0, match_value)
+    def select_parent_from_popup(self, match_value, entry_widget):
+        if entry_widget.winfo_exists():
+            entry_widget.delete(0, "end")
+            entry_widget.insert(0, match_value)
         if self.search_popup: self.search_popup.destroy(); self.search_popup = None
 
     def clear_parent_to_top(self):
-        if "broad" in self.entries and self.entries["broad"].winfo_exists():
-            self.entries["broad"].delete(0, "end")
+        if hasattr(self, "first_parent_widget") and self.first_parent_widget.winfo_exists():
+            self.first_parent_widget.delete(0, "end")
+        if hasattr(self, "parent_frame") and self.parent_frame.winfo_exists():
+            for child in self.parent_frame.winfo_children():
+                child.destroy()
+        self.parent_widgets = [self.first_parent_widget] if hasattr(self, "first_parent_widget") else []
         if self.search_popup: self.search_popup.destroy(); self.search_popup = None
 
     def load_config(self):
@@ -717,29 +775,107 @@ class HECTOREditor:
     def log(self, message):
         print(message)
         if hasattr(self, 'out_tools') and self.out_tools.winfo_exists():
+            self.out_tools.configure(state="normal")
             self.out_tools.insert("end", message + "\n")
             self.out_tools.see("end")  
 
+    def display_turtle(self, uri):
+        try:
+            code = self.mgr.get_concept_turtle(uri)
+            self.highlight_turtle_code(self.out_tools, code)
+        except Exception as e:
+            self.log(f"Error displaying concept code: {e}")
+
+    def highlight_turtle_code(self, text_widget, code):
+        text_widget.configure(state="normal")
+        text_widget.delete("1.0", "end")
+        text_widget.insert("1.0", code)
+        
+        is_dark = (ctk.get_appearance_mode() == "Dark")
+        if is_dark:
+            text_widget.tag_config("prefix", foreground="#569CD6")  # Blue
+            text_widget.tag_config("uri", foreground="#4EC9B0")     # Teal
+            text_widget.tag_config("literal", foreground="#CE9178") # Peach
+            text_widget.tag_config("pref_label", foreground="yellow") # Yellow
+            text_widget.tag_config("alt_label", foreground="orange")  # Orange
+            text_widget.tag_config("comment", foreground="#6A9955") # Green
+            text_widget.tag_config("keyword", foreground="#C586C0") # Purple
+        else:
+            text_widget.tag_config("prefix", foreground="#0000FF")  # Blue
+            text_widget.tag_config("uri", foreground="#008080")     # Teal
+            text_widget.tag_config("literal", foreground="#A31515") # Red
+            text_widget.tag_config("pref_label", foreground="yellow") # Yellow (visible on black bg)
+            text_widget.tag_config("alt_label", foreground="orange")  # Orange (visible on black bg)
+            text_widget.tag_config("comment", foreground="#008000") # Green
+            text_widget.tag_config("keyword", foreground="#7F007F") # Purple
+
+        # Highlight tags using regex Tkinter search
+        self.apply_regex_tag(text_widget, r"#.*", "comment")
+        self.apply_regex_tag(text_widget, r"@prefix|PREFIX", "prefix")
+        self.apply_regex_tag(text_widget, r'"[^"\\]*(?:\\.[^"\\]*)*"', "literal")
+        self.apply_regex_tag(text_widget, r"@[a-zA-Z\-]+", "prefix")
+        self.apply_regex_tag(text_widget, r"<[^>]+>", "uri")
+        self.apply_regex_tag(text_widget, r"\ba\b", "keyword")
+        
+        # Highlight prefLabel and altLabel values specifically (added on top to override default literal tag)
+        self.highlight_predicate_literals(text_widget, "skos:prefLabel", "pref_label")
+        self.highlight_predicate_literals(text_widget, "skos:altLabel", "alt_label")
+        
+        text_widget.configure(state="disabled")
+
+    def highlight_predicate_literals(self, text_widget, predicate, tag):
+        start = "1.0"
+        while True:
+            idx = text_widget.search(predicate, start, stopindex="end")
+            if not idx:
+                break
+            
+            end_block_semi = text_widget.search(";", idx, stopindex="end")
+            end_block_dot = text_widget.search(".", idx, stopindex="end")
+            
+            if end_block_semi and end_block_dot:
+                if text_widget.compare(end_block_semi, "<", end_block_dot):
+                    end_block = end_block_semi
+                else:
+                    end_block = end_block_dot
+            else:
+                end_block = end_block_semi or end_block_dot or "end"
+                
+            literal_pattern = r'"[^"\\]*(?:\\.[^"\\]*)*"'
+            search_start = idx
+            while True:
+                lit_idx = text_widget.search(literal_pattern, search_start, stopindex=end_block, regexp=True)
+                if not lit_idx:
+                    break
+                count = tk.IntVar()
+                lit_idx = text_widget.search(literal_pattern, search_start, stopindex=end_block, regexp=True, count=count)
+                lit_end = f"{lit_idx} + {count.get()} chars"
+                text_widget.tag_add(tag, lit_idx, lit_end)
+                search_start = lit_end
+                
+            start = f"{idx} + {len(predicate)} chars"
+
+    def apply_regex_tag(self, text_widget, pattern, tag):
+        start = "1.0"
+        while True:
+            idx = text_widget.search(pattern, start, stopindex="end", regexp=True)
+            if not idx:
+                break
+            count = tk.IntVar()
+            idx = text_widget.search(pattern, start, stopindex="end", regexp=True, count=count)
+            end_idx = f"{idx} + {count.get()} chars"
+            text_widget.tag_add(tag, idx, end_idx)
+            start = end_idx
+
     def load_data(self, path):
         self.current_file_path = path
-        self.g = Graph()
         try:
-            self.g.parse(self.current_file_path, format="turtle")
-            schemes = list(self.g.subjects(RDF.type, SKOS.ConceptScheme))
-            if schemes: self.scheme_uri = schemes[0]
+            detected_langs = self.mgr.load_data(path)
+            self.scheme_uri = self.mgr.scheme_uri
             self.delete_target_uri = None
             self.lbl_status.configure(text=os.path.basename(path))
             
-            # FIXED: Evaluates ONLY the language labels explicitly declared inside the loaded graph
-            detected_langs = set()
-            for _, p, o in self.g:
-                if p in [SKOS.prefLabel, SKOS.altLabel] and isinstance(o, Literal) and o.language:
-                    detected_langs.add(o.language.lower())
-            
-            if not detected_langs:
-                detected_langs = {"de", "en"}
-            
-            self.all_possible_languages = sorted(list(detected_langs))
+            self.all_possible_languages = detected_langs
             
             if hasattr(self, 'combo_tree_lang'):
                 self.combo_tree_lang.configure(values=[l.upper() for l in self.all_possible_languages])
@@ -755,18 +891,7 @@ class HECTOREditor:
         except Exception as e: messagebox.showerror("IO Error", f"Could not load graph file:\n{e}")
 
     def get_label(self, uri, lang=None):
-        labels = list(self.g.objects(uri, SKOS.prefLabel))
-        if lang:
-            for l in labels:
-                if getattr(l, "language", None) == lang: return str(l)
-        for l_code in self.active_languages:
-            for l in labels:
-                if getattr(l, "language", None) == l_code: return str(l)
-        for l_code in self.all_possible_languages:
-            for l in labels:
-                if getattr(l, "language", None) == l_code: return str(l)
-        if labels: return str(labels[0])
-        return str(uri).split("#")[-1] if "#" in str(uri) else str(uri).split("/")[-1]
+        return self.mgr.get_label(uri, lang, self.active_languages, self.all_possible_languages)
 
     def update_tree_ui(self):
         """Rebuilds UI tree but strictly retains user fold expansion states and selection coordinates."""
@@ -788,9 +913,9 @@ class HECTOREditor:
 
         for item in self.tree.get_children(): self.tree.delete(item)
         filter_txt = self.txt_search.get().lower().strip()
-        concepts = set(self.g.subjects(RDF.type, SKOS.Concept))
+        concepts = self.mgr.get_concepts()
         
-        roots = sorted(list(concepts - set(self.g.subjects(SKOS.broader, None))), key=lambda x: self.get_label(x, lang=self.tree_lang).lower())
+        roots = sorted(list(self.mgr.get_roots()), key=lambda x: self.get_label(x, lang=self.tree_lang).lower())
         self.parent_lookup = {self.get_label(s, lang=self.tree_lang): s for s in concepts}
 
         inserted_nodes = {}
@@ -805,7 +930,7 @@ class HECTOREditor:
             node_id = self.tree.insert(parent_id, "end", text=f" └─ {lbl}", values=(u_str,), open=is_open)
             inserted_nodes[u_str] = node_id
             
-            kids = sorted([(c, self.get_label(c, lang=self.tree_lang)) for c in self.g.subjects(SKOS.broader, concept_uri)], key=lambda x: x[1].lower())
+            kids = sorted([(c, self.get_label(c, lang=self.tree_lang)) for c in self.mgr.get_child_concepts(concept_uri)], key=lambda x: x[1].lower())
             for child_uri, _ in kids: add_node_recursive(node_id, child_uri, path_set | {concept_uri})
 
         for r in roots:
@@ -816,7 +941,7 @@ class HECTOREditor:
                 root_id = self.tree.insert("", "end", text=f"📂 {lbl}", values=(u_str,), open=is_open)
                 inserted_nodes[u_str] = root_id
                 
-                kids = sorted([(c, self.get_label(c, lang=self.tree_lang)) for c in self.g.subjects(SKOS.broader, r)], key=lambda x: x[1].lower())
+                kids = sorted([(c, self.get_label(c, lang=self.tree_lang)) for c in self.mgr.get_child_concepts(r)], key=lambda x: x[1].lower())
                 for child_uri, _ in kids: add_node_recursive(root_id, child_uri, set())
 
         if selected_uri and selected_uri in inserted_nodes:
@@ -840,11 +965,10 @@ class HECTOREditor:
                 input_ns = "http://" + input_ns
             if not input_ns.endswith(("/", "#")): input_ns += "/"
 
-        new_g = Graph()
-        self.scheme_uri = URIRef(input_ns)
-        new_g.add((self.scheme_uri, RDF.type, SKOS.ConceptScheme))
-        new_g.add((self.scheme_uri, SKOS.prefLabel, Literal(name, lang="en")))
-        new_g.serialize(destination=path, format="turtle")
+        self.mgr.create_new_vocabulary(path, input_ns, name)
+        self.scheme_uri = self.mgr.scheme_uri
+        self.current_file_path = path
+
         self.clear_all_editor_fields()
         self.load_data(path)
 
@@ -861,7 +985,7 @@ class HECTOREditor:
             self.entries["uri"].insert(0, f"{base_ns}concept_{uuid.uuid4().hex[:8]}")
             self.entries["uri"].configure(state="disabled")
             
-        for f in ["def", "match_wiki", "match_aat", "match_gnd", "broad"]: 
+        for f in ["def", "match_wiki", "match_aat", "match_gnd"]: 
             if f in self.entries and self.entries[f].winfo_exists(): self.entries[f].delete(0, "end")
             
         for widget in self.lang_entries.values(): 
@@ -872,6 +996,12 @@ class HECTOREditor:
                 for child in frame.winfo_children(): child.destroy()
                 
         self.alt_label_widgets = {lang: [] for lang in self.all_possible_languages}
+        if hasattr(self, "first_parent_widget") and self.first_parent_widget.winfo_exists():
+            self.first_parent_widget.delete(0, "end")
+        if hasattr(self, "parent_frame") and self.parent_frame.winfo_exists():
+            for child in self.parent_frame.winfo_children():
+                child.destroy()
+        self.parent_widgets = [self.first_parent_widget] if hasattr(self, "first_parent_widget") else []
         self.log("✨ New concept initialization layout ready.")
 
     def run_delete_concept(self):
@@ -880,7 +1010,7 @@ class HECTOREditor:
         if not uri_str: return
         uri = URIRef(uri_str)
         
-        children = list(self.g.subjects(SKOS.broader, uri))
+        children = self.mgr.get_child_concepts(uri)
         if children:
             ans = messagebox.askyesnocancel(
                 "Delete Hierarchy?",
@@ -891,23 +1021,15 @@ class HECTOREditor:
             )
             if ans is None: return
             elif ans is True: 
-                def remove_node_recursive(u):
-                    for child in list(self.g.subjects(SKOS.broader, u)): remove_node_recursive(child)
-                    self.g.remove((u, None, None)); self.g.remove((None, None, u))
-                remove_node_recursive(uri)
+                self.mgr.delete_concept_recursive(uri)
                 self.log("🗑️ Entire sub-hierarchy deleted recursively.")
             else: 
-                for child in children:
-                    self.g.remove((child, SKOS.broader, uri))
-                    self.g.add((child, SKOS.topConceptOf, self.scheme_uri))
-                    self.g.add((self.scheme_uri, SKOS.hasTopConcept, child))
-                self.g.remove((uri, None, None)); self.g.remove((None, None, uri))
+                self.mgr.delete_concept_single(uri)
                 self.log("🗑️ Core concept removed. Children re-allocated to vocabulary roots.")
         else:
-            self.g.remove((uri, None, None)); self.g.remove((None, None, uri))
+            self.mgr.delete_concept_single(uri)
             self.log("🗑️ Concept deleted.")
 
-        self.g.serialize(destination=self.current_file_path, format="turtle")
         self.rebuild_form_grid()
         self.clear_all_editor_fields()
         self.update_tree_ui()
@@ -922,7 +1044,6 @@ class HECTOREditor:
             facet_g = Graph()
             facet_g.parse(path, format="turtle")
             
-            # FIXED: Explicit user prompt regarding incoming data alignment strategy
             align_choice = messagebox.askyesno(
                 "URI Alignment Schema Configuration",
                 "Do you want to adapt all imported data to the current vocabulary's base namespace and generate completely new anonymous schema URIs (concept_xxxx)?\n\n"
@@ -949,7 +1070,7 @@ class HECTOREditor:
         scroll_frame = ctk.CTkScrollableFrame(selector)
         scroll_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
-        concepts = sorted(list(self.g.subjects(RDF.type, SKOS.Concept)), key=lambda x: self.get_label(x, lang=self.tree_lang).lower())
+        concepts = sorted(list(self.mgr.get_concepts()), key=lambda x: self.get_label(x, lang=self.tree_lang).lower())
         buttons_map = []
         
         btn_top = ctk.CTkButton(scroll_frame, text="[ Append as independent Top-Concept / Root elements ]", fg_color="#4f4f4f", anchor="w", command=lambda: self.process_facet_alignment(facet_g, None, selector))
@@ -973,42 +1094,9 @@ class HECTOREditor:
     def process_facet_alignment(self, facet_g, parent_uri, window):
         window.destroy()
         current_ns = self.get_clean_namespace()
-        facet_schemes = list(facet_g.subjects(RDF.type, SKOS.ConceptScheme))
-        facet_ns = str(facet_schemes[0]).rstrip('#/') + "/" if facet_schemes else "http://example.org/"
-        
-        facet_concepts = set(facet_g.subjects(RDF.type, SKOS.Concept))
-        facet_has_parent = set(facet_g.subjects(SKOS.broader, None))
-        facet_roots = facet_concepts - facet_has_parent
-        
-        # FIXED: Generates clean mapping translations matching active schema layout demands if requested
-        uri_mapping = {}
-        if self.import_align_uris:
-            for c in facet_concepts:
-                uri_mapping[c] = URIRef(f"{current_ns}concept_{uuid.uuid4().hex[:8]}")
-        
-        def transform_node(uri):
-            if uri in uri_mapping: return uri_mapping[uri]
-            if isinstance(uri, URIRef) and str(uri).startswith(facet_ns) and self.import_align_uris:
-                return URIRef(str(uri).replace(facet_ns, current_ns))
-            return uri
-
-        for s, p, o in facet_g:
-            if s in facet_schemes and p == RDF.type and o == SKOS.ConceptScheme: continue
-            new_s = transform_node(s); new_p = transform_node(p); new_o = transform_node(o) if isinstance(o, URIRef) else o
-            self.g.add((new_s, new_p, new_o))
-            
-        for r in facet_roots:
-            new_r = transform_node(r)
-            if parent_uri:
-                self.g.add((new_r, SKOS.broader, parent_uri))
-                self.g.remove((new_r, SKOS.topConceptOf, None))
-            else:
-                self.g.add((new_r, SKOS.topConceptOf, self.scheme_uri))
-                self.g.add((self.scheme_uri, SKOS.hasTopConcept, new_r))
-                
-        self.g.serialize(destination=self.current_file_path, format="turtle")
+        count = self.mgr.import_facet(facet_g, parent_uri, self.import_align_uris)
         self.update_tree_ui()
-        self.log(f"📥 Facet processing completed. Aligned {len(facet_concepts)} items onto namespace base: '{current_ns}'.")
+        self.log(f"📥 Facet processing completed. Aligned {count} items onto namespace base: '{current_ns}'.")
 
     def run_export_facet(self):
         selected_item = self.tree.selection()
@@ -1026,62 +1114,25 @@ class HECTOREditor:
         )
         if ans is None: return
         
-        export_set = {root_uri}
-        if ans is True:
-            def collect_children(parent_uri):
-                for child in self.g.subjects(SKOS.broader, parent_uri):
-                    if child not in export_set:
-                        export_set.add(child)
-                        collect_children(child)
-            collect_children(root_uri)
-            
         path = filedialog.asksaveasfilename(title="Save Exported Facet", defaultextension=".ttl", filetypes=[("Turtle Files", "*.ttl")])
         if not path: return
         
-        export_g = Graph()
-        name = os.path.basename(path).replace(".ttl", "")
-        new_scheme = URIRef(self.get_clean_namespace() + name)
-        export_g.add((new_scheme, RDF.type, SKOS.ConceptScheme))
-        export_g.add((new_scheme, SKOS.prefLabel, Literal(name, lang="en")))
-        
-        for c in export_set:
-            for p, o in self.g.predicate_objects(c):
-                if p == SKOS.broader:
-                    if o in export_set: export_g.add((c, p, o))
-                elif p in [SKOS.topConceptOf, SKOS.hasTopConcept]: continue
-                else: export_g.add((c, p, o))
-                    
-            if c == root_uri:
-                export_g.add((c, SKOS.topConceptOf, new_scheme))
-                export_g.add((new_scheme, SKOS.hasTopConcept, c))
-            elif ans is True and not list(self.g.objects(c, SKOS.broader)):
-                export_g.add((c, SKOS.topConceptOf, new_scheme))
-                export_g.add((new_scheme, SKOS.hasTopConcept, c))
-                
         try:
-            export_g.serialize(destination=path, format="turtle")
-            self.log(f"📤 Export generated successfully ({len(export_set)} concepts saved): {os.path.basename(path)}")
+            count = self.mgr.export_facet(root_uri, ans is True, path)
+            self.log(f"📤 Export generated successfully ({count} concepts saved): {os.path.basename(path)}")
         except Exception as e: messagebox.showerror("Export Error", f"Failed to serialize file onto storage target:\n{e}")
 
     def run_health_check(self):
         self.log("🏥 Running rapid semantic health scan...")
-        orphans = [self.get_label(s, lang=self.tree_lang) for s in self.g.subjects(RDF.type, SKOS.Concept) if not list(self.g.objects(s, SKOS.broader)) and not list(self.g.objects(s, SKOS.topConceptOf))]
+        orphans = [self.get_label(s, lang=self.tree_lang) for s in self.mgr.run_health_check()]
         if orphans: self.log(f"🚫 Stale orphan nodes detected: {', '.join(orphans)}")
         else: self.log("✅ No orphan nodes. Validation clear.")
 
     def run_fix_labels(self):
         self.log("🛠_ Re-indexing and repairing graph strings...")
-        c_uri = 0
-        for s in self.g.subjects(RDF.type, SKOS.Concept):
-            if not list(self.g.objects(s, SKOS.prefLabel)):
-                uri_str = str(s)
-                raw = uri_str.split("#")[-1] if "#" in uri_str else uri_str.split("/")[-1]
-                clean = raw.replace("_", " ").replace("%20", " ").capitalize()
-                self.g.add((s, SKOS.prefLabel, Literal(clean, lang="en")))
-                c_uri += 1
-        self.g.serialize(destination=self.current_file_path, format="turtle")
+        repaired_count = self.mgr.run_fix_labels()
         self.update_tree_ui()
-        self.log(f"✅ Success. Repaired {c_uri} concept resources.")
+        self.log(f"✅ Success. Repaired {repaired_count} concept resources.")
 
 
 if __name__ == "__main__":
