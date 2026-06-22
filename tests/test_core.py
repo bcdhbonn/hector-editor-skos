@@ -58,6 +58,7 @@ class TestVocabularyManager(unittest.TestCase):
         self.assertEqual(len(details["alt_labels"]), 1)
         self.assertIn("http://example.org/test/parent1", details["broaders"])
         self.assertEqual(details["match_wiki"], "http://www.wikidata.org/entity/Q12345")
+        self.assertIn((concept_uri, SKOS.inScheme, self.mgr.scheme_uri), self.mgr.g)
 
     def test_delete_concept(self):
         self.mgr.create_new_vocabulary(self.vocab_path, "http://example.org/test/", "Test Vocab")

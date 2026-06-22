@@ -131,11 +131,12 @@ class VocabularyManager:
     def save_concept(self, uri, pref_labels, alt_labels, definition, match_wiki, match_aat, match_gnd, broader_parents):
         """Saves concept fields back to the graph. Replaces existing statements."""
         # Clean existing relations
-        for p in [SKOS.prefLabel, SKOS.altLabel, SKOS.definition, SKOS.broader, SKOS.topConceptOf]:
+        for p in [SKOS.prefLabel, SKOS.altLabel, SKOS.definition, SKOS.broader, SKOS.topConceptOf, SKOS.inScheme]:
             self.g.remove((uri, p, None))
         self.g.remove((None, SKOS.hasTopConcept, uri))
 
         self.g.add((uri, RDF.type, SKOS.Concept))
+        self.g.add((uri, SKOS.inScheme, self.scheme_uri))
 
         for text_val, lang in pref_labels:
             if text_val.strip():
@@ -230,6 +231,11 @@ class VocabularyManager:
             new_o = transform_node(o) if isinstance(o, URIRef) else o
             self.g.add((new_s, new_p, new_o))
             
+        for c in facet_concepts:
+            new_c = transform_node(c)
+            self.g.remove((new_c, SKOS.inScheme, None))
+            self.g.add((new_c, SKOS.inScheme, self.scheme_uri))
+            
         for r in facet_roots:
             new_r = transform_node(r)
             if parent_uri:
@@ -266,6 +272,8 @@ class VocabularyManager:
                         export_g.add((c, p, o))
                 elif p in [SKOS.topConceptOf, SKOS.hasTopConcept]:
                     continue
+                elif p == SKOS.inScheme:
+                    export_g.add((c, SKOS.inScheme, new_scheme))
                 else:
                     export_g.add((c, p, o))
                     
