@@ -26,7 +26,7 @@ class TestVocabularyManager(unittest.TestCase):
         # Load in another manager
         new_mgr = VocabularyManager()
         langs = new_mgr.load_data(self.vocab_path)
-        self.assertEqual(new_mgr.scheme_uri, URIRef("http://example.org/test/"))
+        self.assertEqual(new_mgr.scheme_uri, URIRef("http://example.org/test/scheme"))
         self.assertIn("en", langs)
 
     def test_save_and_retrieve_concept(self):
@@ -89,6 +89,22 @@ class TestVocabularyManager(unittest.TestCase):
         repaired = self.mgr.run_fix_labels()
         self.assertEqual(repaired, 1)
         self.assertEqual(self.mgr.get_label(c1, lang="en"), "Concept without label")
+
+    def test_cycle_handling(self):
+        self.mgr.create_new_vocabulary(self.vocab_path, "http://example.org/test/", "Test Vocab")
+        c1 = URIRef("http://example.org/test/concept_1")
+        c2 = URIRef("http://example.org/test/concept_2")
+        self.mgr.g.add((c1, RDF.type, SKOS.Concept))
+        self.mgr.g.add((c2, RDF.type, SKOS.Concept))
+        
+        # Create a cycle: c1 broader c2, and c2 broader c1
+        self.mgr.g.add((c1, SKOS.broader, c2))
+        self.mgr.g.add((c2, SKOS.broader, c1))
+        
+        # Attempting recursive delete on a cycle should complete without RecursionError
+        self.mgr.delete_concept_recursive(c1)
+        self.assertNotIn(c1, self.mgr.get_concepts())
+        self.assertNotIn(c2, self.mgr.get_concepts())
 
     def test_get_concept_turtle(self):
         self.mgr.create_new_vocabulary(self.vocab_path, "http://example.org/test/", "Test Vocab")

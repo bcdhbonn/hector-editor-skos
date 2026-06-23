@@ -37,7 +37,10 @@ class VocabularyManager:
         """Creates a new vocabulary with a base namespace and concept scheme."""
         self.current_file_path = path
         self.g = Graph()
-        self.scheme_uri = URIRef(custom_namespace)
+        if custom_namespace.endswith(("#", "/")):
+            self.scheme_uri = URIRef(custom_namespace + "scheme")
+        else:
+            self.scheme_uri = URIRef(custom_namespace + "#scheme")
         self.g.add((self.scheme_uri, RDF.type, SKOS.ConceptScheme))
         self.g.add((self.scheme_uri, SKOS.prefLabel, Literal(name, lang="en")))
         self.serialize()
@@ -52,9 +55,14 @@ class VocabularyManager:
         if self.scheme_uri:
             sch_str = str(self.scheme_uri)
             if (sch_str.startswith("http://") or sch_str.startswith("https://")) and not sch_str.startswith("file:"):
-                if not sch_str.endswith(("/", "#")):
-                    sch_str += "/"
-                return sch_str
+                if "#" in sch_str:
+                    return sch_str.split("#")[0] + "#"
+                elif sch_str.endswith(("/scheme", "/Scheme", "/vocabulary", "/Vocabulary")):
+                    return "/".join(sch_str.split("/")[:-1]) + "/"
+                else:
+                    if not sch_str.endswith(("/", "#")):
+                        sch_str += "/"
+                    return sch_str
 
         for s in self.g.subjects(RDF.type, SKOS.Concept):
             s_str = str(s)
@@ -171,13 +179,19 @@ class VocabularyManager:
 
     def delete_concept_recursive(self, uri):
         """Recursively deletes a concept and all of its descendants."""
-        def remove_node_recursive(u):
-            for child in self.get_child_concepts(u):
-                remove_node_recursive(child)
+        to_delete = set()
+        stack = [uri]
+        while stack:
+            curr = stack.pop()
+            if curr not in to_delete:
+                to_delete.add(curr)
+                for child in self.get_child_concepts(curr):
+                    if child not in to_delete:
+                        stack.append(child)
+                        
+        for u in to_delete:
             self.g.remove((u, None, None))
             self.g.remove((None, None, u))
-            
-        remove_node_recursive(uri)
         self.serialize()
 
     def delete_concept_single(self, uri):
@@ -252,12 +266,13 @@ class VocabularyManager:
         """Exports a single concept or hierarchy branch to a new Turtle file."""
         export_set = {root_uri}
         if export_sub_hierarchy:
-            def collect_children(parent_uri):
-                for child in self.get_child_concepts(parent_uri):
+            stack = [root_uri]
+            while stack:
+                curr = stack.pop()
+                for child in self.get_child_concepts(curr):
                     if child not in export_set:
                         export_set.add(child)
-                        collect_children(child)
-            collect_children(root_uri)
+                        stack.append(child)
             
         export_g = Graph()
         name = os.path.basename(destination_path).replace(".ttl", "")

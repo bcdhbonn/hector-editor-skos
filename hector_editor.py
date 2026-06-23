@@ -849,7 +849,8 @@ class HECTOREditor:
                     break
                 count = tk.IntVar()
                 lit_idx = text_widget.search(literal_pattern, search_start, stopindex=end_block, regexp=True, count=count)
-                lit_end = f"{lit_idx} + {count.get()} chars"
+                match_len = max(1, count.get())
+                lit_end = f"{lit_idx} + {match_len} chars"
                 text_widget.tag_add(tag, lit_idx, lit_end)
                 search_start = lit_end
                 
@@ -863,7 +864,8 @@ class HECTOREditor:
                 break
             count = tk.IntVar()
             idx = text_widget.search(pattern, start, stopindex="end", regexp=True, count=count)
-            end_idx = f"{idx} + {count.get()} chars"
+            match_len = max(1, count.get())
+            end_idx = f"{idx} + {match_len} chars"
             text_widget.tag_add(tag, idx, end_idx)
             start = end_idx
 
@@ -898,14 +900,17 @@ class HECTOREditor:
         expanded_uris = set()
         selected_uri = None
         
-        def capture_state(item):
+        # Iterative capture of tree state
+        state_stack = list(self.tree.get_children(""))
+        while state_stack:
+            item = state_stack.pop()
             vals = self.tree.item(item)["values"]
             if vals:
                 uri_str = str(vals[0])
-                if self.tree.item(item, "open"): expanded_uris.add(uri_str)
-            for child in self.tree.get_children(item): capture_state(child)
-        
-        for root_item in self.tree.get_children(""): capture_state(root_item)
+                if self.tree.item(item, "open"):
+                    expanded_uris.add(uri_str)
+            for child in self.tree.get_children(item):
+                state_stack.append(child)
             
         sel = self.tree.selection()
         if sel and self.tree.item(sel[0])["values"]:
@@ -920,29 +925,39 @@ class HECTOREditor:
 
         inserted_nodes = {}
 
-        def add_node_recursive(parent_id, concept_uri, path_set):
-            if concept_uri in path_set: return  
-            lbl = self.get_label(concept_uri, lang=self.tree_lang)
-            if filter_txt and filter_txt not in lbl.lower(): return
+        # Iterative stack-based DFS to insert items
+        # Stack elements: (parent_id, concept_uri, path_set, is_root)
+        # We push roots/children in reverse alphabetical order to pop and process in alphabetical order
+        stack = []
+        for r in reversed(roots):
+            stack.append(("", r, set(), True))
             
+        while stack:
+            parent_id, concept_uri, path_set, is_root = stack.pop()
+            
+            if concept_uri in path_set:
+                continue
+                
+            lbl = self.get_label(concept_uri, lang=self.tree_lang)
+            if filter_txt and filter_txt not in lbl.lower():
+                continue
+                
             u_str = str(concept_uri)
             is_open = u_str in expanded_uris
-            node_id = self.tree.insert(parent_id, "end", text=f" └─ {lbl}", values=(u_str,), open=is_open)
+            prefix = "📂 " if is_root else " └─ "
+            
+            node_id = self.tree.insert(parent_id, "end", text=f"{prefix}{lbl}", values=(u_str,), open=is_open)
             inserted_nodes[u_str] = node_id
             
-            kids = sorted([(c, self.get_label(c, lang=self.tree_lang)) for c in self.mgr.get_child_concepts(concept_uri)], key=lambda x: x[1].lower())
-            for child_uri, _ in kids: add_node_recursive(node_id, child_uri, path_set | {concept_uri})
-
-        for r in roots:
-            lbl = self.get_label(r, lang=self.tree_lang)
-            if not filter_txt or filter_txt in lbl.lower():
-                u_str = str(r)
-                is_open = u_str in expanded_uris
-                root_id = self.tree.insert("", "end", text=f"📂 {lbl}", values=(u_str,), open=is_open)
-                inserted_nodes[u_str] = root_id
-                
-                kids = sorted([(c, self.get_label(c, lang=self.tree_lang)) for c in self.mgr.get_child_concepts(r)], key=lambda x: x[1].lower())
-                for child_uri, _ in kids: add_node_recursive(root_id, child_uri, set())
+            kids = sorted(
+                [(c, self.get_label(c, lang=self.tree_lang)) for c in self.mgr.get_child_concepts(concept_uri)],
+                key=lambda x: x[1].lower(),
+                reverse=True
+            )
+            
+            new_path_set = path_set | {concept_uri}
+            for child_uri, _ in kids:
+                stack.append((node_id, child_uri, new_path_set, False))
 
         if selected_uri and selected_uri in inserted_nodes:
             target_id = inserted_nodes[selected_uri]
