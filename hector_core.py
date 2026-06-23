@@ -100,12 +100,13 @@ class VocabularyManager:
         return str(uri).split("#")[-1] if "#" in str(uri) else str(uri).split("/")[-1]
 
     def get_concept_details(self, uri):
-        """Retrieves details of a concept: labels, definition, exactMatch mappings, parents."""
+        """Retrieves details of a concept: labels, definitions, exactMatch mappings, parents."""
         details = {
             "uri": str(uri),
             "pref_labels": [],
             "alt_labels": [],
             "definition": "",
+            "definitions": [],
             "broaders": [],
             "match_wiki": "",
             "match_aat": "",
@@ -120,7 +121,14 @@ class VocabularyManager:
             lang = getattr(literal, "language", "de")
             details["alt_labels"].append((str(literal), lang))
             
+        # Keep single string definition as fallback
         details["definition"] = next((str(d) for d in self.g.objects(uri, SKOS.definition)), "")
+        
+        for literal in self.g.objects(uri, SKOS.definition):
+            lang = getattr(literal, "language", None)
+            if not lang:
+                lang = "en"
+            details["definitions"].append((str(literal), lang))
         
         details["broaders"] = [str(p) for p in self.g.objects(uri, SKOS.broader)]
         
@@ -136,7 +144,7 @@ class VocabularyManager:
                 
         return details
 
-    def save_concept(self, uri, pref_labels, alt_labels, definition, match_wiki, match_aat, match_gnd, broader_parents):
+    def save_concept(self, uri, pref_labels, alt_labels, definitions, match_wiki, match_aat, match_gnd, broader_parents):
         """Saves concept fields back to the graph. Replaces existing statements."""
         # Clean existing relations
         for p in [SKOS.prefLabel, SKOS.altLabel, SKOS.definition, SKOS.broader, SKOS.topConceptOf, SKOS.inScheme]:
@@ -154,8 +162,13 @@ class VocabularyManager:
             if text_val.strip():
                 self.g.add((uri, SKOS.altLabel, Literal(text_val.strip(), lang=lang)))
 
-        if definition.strip():
-            self.g.add((uri, SKOS.definition, Literal(definition.strip())))
+        # Handle backward compatibility if single string is passed
+        if isinstance(definitions, str):
+            definitions = [(definitions, "en")] if definitions.strip() else []
+
+        for text_val, lang in definitions:
+            if text_val.strip():
+                self.g.add((uri, SKOS.definition, Literal(text_val.strip(), lang=lang)))
 
         for val in [match_wiki, match_aat, match_gnd]:
             if val.strip():

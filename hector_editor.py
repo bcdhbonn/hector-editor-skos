@@ -46,6 +46,7 @@ class HECTOREditor:
         
         # Component caches mapping dynamic multilingual UI objects to runtime handlers
         self.lang_entries = {}      
+        self.def_entries = {}       
         self.alt_label_frames = {}  
         self.alt_label_widgets = {} 
 
@@ -209,6 +210,12 @@ class HECTOREditor:
             if hasattr(v, "winfo_exists") and v.winfo_exists():
                 try: cached_langs[k] = v.get()
                 except: pass
+
+        cached_defs = {}
+        for k, v in self.def_entries.items():
+            if hasattr(v, "winfo_exists") and v.winfo_exists():
+                try: cached_defs[k] = v.get()
+                except: pass
         
         cached_alt_labels = {}
         for lang, entries_list in self.alt_label_widgets.items():
@@ -308,11 +315,16 @@ class HECTOREditor:
                     self.add_alt_label_row(lang, initial_text=text_value)
             current_row += 1
 
-        tk.Label(self.form_frame, text="skos:definition:", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
-        self.entries["def"] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12))
-        self.entries["def"].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=4, sticky="ew")
-        if "def" in cached_vals: self.entries["def"].insert(0, cached_vals["def"])
-        current_row += 1
+        self.def_entries = {}
+        for lang in self.active_languages:
+            def_label_text = f"definition ({lang.upper()}):"
+            tk.Label(self.form_frame, text=def_label_text, font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=3, sticky="w")
+            
+            self.def_entries[lang] = ctk.CTkEntry(self.form_frame, height=28, font=("Arial", 12))
+            self.def_entries[lang].grid(row=current_row, column=1, columnspan=2, padx=(5, 15), pady=3, sticky="ew")
+            if lang in cached_defs:
+                self.def_entries[lang].insert(0, cached_defs[lang])
+            current_row += 1
 
         tk.Label(self.form_frame, text="Parent(s):", font=("Arial", 12), bg=bg_color, fg=text_color, anchor="w").grid(row=current_row, column=0, padx=(15, 5), pady=4, sticky="w")
         
@@ -547,11 +559,12 @@ class HECTOREditor:
                             self.lang_entries["en"].insert(0, global_fallback)
 
                 descriptions = entity.get("descriptions", {})
-                en_desc = descriptions.get("en", {}).get("value", "")
-                fallback_desc = en_desc if en_desc else next(iter(descriptions.values()), {}).get("value", "")
-                if fallback_desc and "def" in self.entries and self.entries["def"].winfo_exists():
-                    self.entries["def"].delete(0, "end")
-                    self.entries["def"].insert(0, fallback_desc)
+                for lang in self.active_languages:
+                    val = descriptions.get(lang, {}).get("value", "")
+                    if lang in self.def_entries and self.def_entries[lang].winfo_exists():
+                        self.def_entries[lang].delete(0, "end")
+                        if val:
+                            self.def_entries[lang].insert(0, val)
 
                 if "match_wiki" in self.entries and self.entries["match_wiki"].winfo_exists():
                     self.entries["match_wiki"].delete(0, "end")
@@ -593,8 +606,12 @@ class HECTOREditor:
                     alt_val = ent_widget.get().strip()
                     if alt_val: alt_labels.append((alt_val, lang))
 
-        # Retrieve definition
-        definition = self.entries["def"].get().strip() if ("def" in self.entries and self.entries["def"].winfo_exists()) else ""
+        # Retrieve definitions
+        definitions = []
+        for lang, widget in self.def_entries.items():
+            if widget.winfo_exists():
+                text_val = widget.get().strip()
+                if text_val: definitions.append((text_val, lang))
 
         # Retrieve exactMatch fields
         match_wiki = self.entries["match_wiki"].get().strip() if ("match_wiki" in self.entries and self.entries["match_wiki"].winfo_exists()) else ""
@@ -610,7 +627,7 @@ class HECTOREditor:
                     if p_val and p_val in self.parent_lookup:
                         broader_parents.append(str(self.parent_lookup[p_val]))
 
-        self.mgr.save_concept(uri, pref_labels, alt_labels, definition, match_wiki, match_aat, match_gnd, broader_parents)
+        self.mgr.save_concept(uri, pref_labels, alt_labels, definitions, match_wiki, match_aat, match_gnd, broader_parents)
         self.update_tree_ui()
         self.log(f"💾 Graph synced to file: {self.get_label(uri, lang=self.tree_lang)}")
         self.display_turtle(uri)
@@ -640,6 +657,10 @@ class HECTOREditor:
             if lang_code not in self.all_possible_languages:
                 self.all_possible_languages.append(lang_code)
 
+        for text_val, lang_code in details.get("definitions", []):
+            if lang_code not in self.all_possible_languages:
+                self.all_possible_languages.append(lang_code)
+
         # Populate prefLabels
         for text_val, lang_code in details["pref_labels"]:
             if lang_code in self.lang_entries and self.lang_entries[lang_code].winfo_exists():
@@ -650,9 +671,11 @@ class HECTOREditor:
         for text_val, lang_code in details["alt_labels"]:
             self.add_alt_label_row(lang_code, initial_text=text_val)
 
-        # Populate definition
-        if "def" in self.entries and self.entries["def"].winfo_exists():
-            self.entries["def"].insert(0, details["definition"])
+        # Populate definitions
+        for text_val, lang_code in details.get("definitions", []):
+            if lang_code in self.def_entries and self.def_entries[lang_code].winfo_exists():
+                self.def_entries[lang_code].delete(0, "end")
+                self.def_entries[lang_code].insert(0, text_val)
 
         # Populate parents
         if hasattr(self, "parent_frame") and self.parent_frame.winfo_exists():
@@ -681,13 +704,16 @@ class HECTOREditor:
             
         for widget in self.lang_entries.values(): 
             if widget.winfo_exists(): widget.delete(0, "end")
+
+        for widget in self.def_entries.values(): 
+            if widget.winfo_exists(): widget.delete(0, "end")
             
         for frame in self.alt_label_frames.values():
             if frame.winfo_exists():
                 for child in frame.winfo_children(): child.destroy()
                 
         self.alt_label_widgets = {lang: [] for lang in self.all_possible_languages}
-        for field in ["def", "match_wiki", "match_aat", "match_gnd"]: 
+        for field in ["match_wiki", "match_aat", "match_gnd"]: 
             if field in self.entries and self.entries[field].winfo_exists():
                 self.entries[field].delete(0, "end")
         if hasattr(self, "first_parent_widget") and self.first_parent_widget.winfo_exists():
@@ -1000,10 +1026,13 @@ class HECTOREditor:
             self.entries["uri"].insert(0, f"{base_ns}concept_{uuid.uuid4().hex[:8]}")
             self.entries["uri"].configure(state="disabled")
             
-        for f in ["def", "match_wiki", "match_aat", "match_gnd"]: 
+        for f in ["match_wiki", "match_aat", "match_gnd"]: 
             if f in self.entries and self.entries[f].winfo_exists(): self.entries[f].delete(0, "end")
             
         for widget in self.lang_entries.values(): 
+            if widget.winfo_exists(): widget.delete(0, "end")
+
+        for widget in self.def_entries.values(): 
             if widget.winfo_exists(): widget.delete(0, "end")
             
         for frame in self.alt_label_frames.values():

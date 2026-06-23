@@ -106,6 +106,34 @@ class TestVocabularyManager(unittest.TestCase):
         self.assertNotIn(c1, self.mgr.get_concepts())
         self.assertNotIn(c2, self.mgr.get_concepts())
 
+    def test_multilingual_definitions(self):
+        self.mgr.create_new_vocabulary(self.vocab_path, "http://example.org/test/", "Test Vocab")
+        c1 = URIRef("http://example.org/test/concept_1")
+        
+        pref_labels = [("Concept One", "en")]
+        alt_labels = []
+        definitions = [("This is English definition.", "en"), ("Das ist die deutsche Definition.", "de")]
+        
+        self.mgr.save_concept(
+            c1,
+            pref_labels,
+            alt_labels,
+            definitions,
+            "",
+            "",
+            "",
+            []
+        )
+        
+        details = self.mgr.get_concept_details(c1)
+        self.assertEqual(len(details["definitions"]), 2)
+        
+        # Verify language tags
+        en_def = next(d[0] for d in details["definitions"] if d[1] == "en")
+        de_def = next(d[0] for d in details["definitions"] if d[1] == "de")
+        self.assertEqual(en_def, "This is English definition.")
+        self.assertEqual(de_def, "Das ist die deutsche Definition.")
+
     def test_get_concept_turtle(self):
         self.mgr.create_new_vocabulary(self.vocab_path, "http://example.org/test/", "Test Vocab")
         c1 = URIRef("http://example.org/test/concept_1")
