@@ -12,7 +12,7 @@ The editor features integrated APIs to directly link local concepts to major glo
 * **Authority File Integration:** Built-in asynchronous querying and exact matching (`skos:exactMatch`) for:
     * Wikidata API
     * Getty Art & Architecture Thesaurus (AAT)
-    * Gemeinsame Normdate (GND)
+    * Gemeinsame Normdaten (GND)
 * **Data Quality Assurance:** Rapid semantic health scans to detect orphan nodes and auto-repair missing URI labels.
 * **Turtle Serialization:** Native import and export of robust `.ttl` (Turtle) graphs using RDFLib.
 
