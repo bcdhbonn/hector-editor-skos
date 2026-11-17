@@ -618,7 +618,8 @@
     skos:topConceptOf :scheme .
 
 :scheme a skos:ConceptScheme ;
-    skos:hasTopConcept :concept_0f86e6c8,
+    skos:hasTopConcept :concept_cfe6958f,
+        :concept_0f86e6c8,
         :concept_25ff81b4,
         :concept_ea7765be,
         :concept_f680c28a ;
@@ -663,7 +664,8 @@
     skos:prefLabel "Laserscanner"@de .
 
 :concept_f680c28a a skos:Concept ;
-    skos:narrower :concept_1cf7cc95,
+    skos:narrower :concept_cfe6958f,
+        :concept_1cf7cc95,
         :concept_4a346b1e,
         :concept_645ddec1,
         :concept_6954b83f,
@@ -702,3 +704,110 @@
     skos:prefLabel "DCC Software"@de,
         "DCC Software"@en .
 
+:concept_cfe6958f a skos:Concept ;
+    skos:broader :concept_f680c28a ;
+    skos:definition "Methods and techniques using artificial intelligence or machine learning in 3D digitisation, reconstruction, post-processing, or derivative generation." ;
+    skos:narrower :concept_ea97786b,
+        :concept_4441ef06,
+        :concept_f9b6733c,
+        :concept_4d4d5300,
+        :concept_27e37823,
+        :concept_6dd1bf49,
+        :concept_c5219268,
+        :concept_f8ea3fc3,
+        :concept_76a06b74,
+        :concept_54442277,
+        :concept_559c89c6 ;
+    skos:prefLabel "KI-gestützte Verfahren"@de,
+        "AI-assisted processing"@en ;
+    skos:topConceptOf :scheme .
+
+:concept_ea97786b a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "Controlled classification of the role of trained algorithmic / AI media according to IPTC Digital Source Type." ;
+    skos:narrower :concept_dfee2781,
+        :concept_cef1191a,
+        :concept_7042efdc ;
+    skos:prefLabel "IPTC Digital Source Type (KI-Klassifikation)"@de,
+        "IPTC Digital Source Type (AI Classification)"@en .
+
+:concept_dfee2781 a skos:Concept ;
+    skos:broader :concept_ea97786b ;
+    skos:definition "Digital media created entirely using a trained algorithmic / generative AI model without direct capture of a physical object." ;
+    skos:exactMatch <http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia> ;
+    skos:prefLabel "Vollständig KI-generierte Medien (trainedAlgorithmicMedia)"@de,
+        "Fully AI-generated media (trainedAlgorithmicMedia)"@en .
+
+:concept_cef1191a a skos:Concept ;
+    skos:broader :concept_ea97786b ;
+    skos:definition "Captured or reconstructed heritage media in which specific areas (e.g. occluded textures or missing geometry) were generated or filled using trained algorithmic AI." ;
+    skos:exactMatch <http://cv.iptc.org/newscodes/digitalsourcetype/compositeWithTrainedAlgorithmicMedia> ;
+    skos:prefLabel "Teilweise KI-generierte Medien (compositeWithTrainedAlgorithmicMedia)"@de,
+        "Composite with AI-generated media (compositeWithTrainedAlgorithmicMedia)"@en .
+
+:concept_7042efdc a skos:Concept ;
+    skos:broader :concept_ea97786b ;
+    skos:definition "Captured media enhanced via AI/algorithmic processing (e.g. denoising, upscaling, super-resolution) without synthesizing new content." ;
+    skos:exactMatch <http://cv.iptc.org/newscodes/digitalsourcetype/algorithmicallyEnhanced> ;
+    skos:prefLabel "KI-verbesserte Medien (algorithmicallyEnhanced)"@de,
+        "Algorithmically enhanced media (algorithmicallyEnhanced)"@en .
+
+:concept_4441ef06 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "Generative filling of occluded or missing texture areas on a 3D model's UV map using AI inpainting." ;
+    skos:prefLabel "KI-Inpainting (Texturergänzung)"@de,
+        "AI texture inpainting"@en .
+
+:concept_f9b6733c a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "Synthesis or enhancement of textures and rendered views using diffusion models (optionally guided by reference images and prompts)." ;
+    skos:prefLabel "Diffusionsbasierte Bild-/Textursynthese"@de,
+        "Diffusion-based image/texture synthesis"@en .
+
+:concept_4d4d5300 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "AI-assisted completion or reconstruction of missing geometric parts of a 3D mesh." ;
+    skos:prefLabel "KI-Geometrie-Rekonstruktion (Fehlstellen)"@de,
+        "AI geometry completion"@en .
+
+:concept_27e37823 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "Algorithmic resolution enhancement of textures or source imagery using neural super-resolution models." ;
+    skos:prefLabel "KI-Upscaling / Super-Resolution"@de,
+        "AI upscaling / super-resolution"@en .
+
+:concept_6dd1bf49 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "AI-based noise reduction applied to images, depth maps, point clouds, or rendered outputs." ;
+    skos:prefLabel "KI-Denoising (Entrauschung)"@de,
+        "AI denoising"@en .
+
+:concept_c5219268 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "AI-assisted video or animation generation from rendered still frames of a 3D model for dissemination." ;
+    skos:prefLabel "Image-to-Video (KI-Animation)"@de,
+        "Image-to-Video (AI animation)"@en .
+
+:concept_f8ea3fc3 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "Generative 3D model synthesis from one or more images or text prompts." ;
+    skos:prefLabel "Image-to-3D / Text-to-3D"@de,
+        "Image-to-3D / Text-to-3D"@en .
+
+:concept_76a06b74 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "Neural scene representation reconstructing volumetric 3D views from posed 2D images." ;
+    skos:prefLabel "Neural Radiance Fields (NeRF)"@de,
+        "Neural Radiance Fields (NeRF)"@en .
+
+:concept_54442277 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "Radiance field technique representing 3D scenes using optimizable 3D Gaussian primitives." ;
+    skos:prefLabel "3D Gaussian Splatting (3DGS)"@de,
+        "3D Gaussian Splatting (3DGS)"@en .
+
+:concept_559c89c6 a skos:Concept ;
+    skos:broader :concept_cfe6958f ;
+    skos:definition "AI-assisted foreground/background masking or semantic segmentation of source imagery or 3D meshes." ;
+    skos:prefLabel "KI-Segmentierung / Maskierung"@de,
+        "AI segmentation / masking"@en .
