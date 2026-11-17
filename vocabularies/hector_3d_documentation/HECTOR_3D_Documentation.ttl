@@ -439,7 +439,9 @@
 
 :concept_3e46ce7e a skos:Concept ;
     skos:broader :concept_70501d55 ;
-    skos:narrower :concept_3a09b35a,
+    skos:narrower :concept_91e4fb4c,
+        :concept_6362fc57,
+        :concept_3a09b35a,
         :concept_60f092f2 ;
     skos:prefLabel "Streifenlichtscanner Software"@de .
 
@@ -557,7 +559,11 @@
 :concept_e4c77406 a skos:Concept ;
     skos:broader :concept_6954b83f ;
     skos:definition "The measurement method used to capture the reference data for georeferencing." ;
-    skos:narrower :concept_19cded7d,
+    skos:narrower :concept_0472e85d,
+        :concept_393f51b8,
+        :concept_28fc4682,
+        :concept_82d08020,
+        :concept_19cded7d,
         :concept_2c41305c,
         :concept_33ea0ea9 ;
     skos:prefLabel "Erfassungsmethode der Referenzdaten"@de,
@@ -590,7 +596,15 @@
     skos:exactMatch <http://vocab.getty.edu/aat/300022636>,
         <http://www.wikidata.org/entity/Q15328>,
         <https://d-nb.info/gnd/4366655-3> ;
-    skos:narrower :concept_109f7867,
+    skos:narrower :concept_259793d9,
+        :concept_f0315c39,
+        :concept_e6d81770,
+        :concept_cc7f91c4,
+        :concept_d3d9b8c8,
+        :concept_c6dee05f,
+        :concept_5301f386,
+        :concept_223a1aaf,
+        :concept_109f7867,
         :concept_179f35df,
         :concept_bd0c8797,
         :concept_dabc55cd ;
@@ -599,7 +613,10 @@
 
 :concept_4fb72ff3 a skos:Concept ;
     skos:broader :concept_70501d55 ;
-    skos:narrower :concept_541ccd61,
+    skos:narrower :concept_ce922c0a,
+        :concept_31c4f530,
+        :concept_72a567e8,
+        :concept_541ccd61,
         :concept_746a6187,
         :concept_a5af1a27,
         :concept_f1afe335 ;
@@ -627,7 +644,9 @@
 
 :concept_4b3095b3 a skos:Concept ;
     skos:broader :concept_681bda2d ;
-    skos:narrower :concept_0d14b1d2,
+    skos:narrower :concept_25261e6a,
+        :concept_dbd04823,
+        :concept_0d14b1d2,
         :concept_2e440d0a,
         :concept_8ad7f1c5,
         :concept_91dce6e1,
@@ -636,7 +655,9 @@
 
 :concept_a91783c8 a skos:Concept ;
     skos:broader :concept_0f86e6c8 ;
-    skos:narrower :concept_0d98a253,
+    skos:narrower :concept_1110dcc9,
+        :concept_2829dc06,
+        :concept_0d98a253,
         :concept_1899d64c,
         :concept_706f7d23,
         :concept_8f0e5d21,
@@ -645,7 +666,11 @@
 
 :concept_d162f44c a skos:Concept ;
     skos:broader :concept_4a346b1e ;
-    skos:narrower :concept_3773676a,
+    skos:narrower :concept_8d04c174,
+        :concept_6cc049c4,
+        :concept_362b4469,
+        :concept_bcea0f22,
+        :concept_3773676a,
         :concept_3b43a298,
         :concept_7c1e100a,
         :concept_cfe82cca,
@@ -655,7 +680,10 @@
 
 :concept_199de53d a skos:Concept ;
     skos:broader :concept_0f86e6c8 ;
-    skos:narrower :concept_25ff81b4,
+    skos:narrower :concept_53282b55,
+        :concept_f0e21e0e,
+        :concept_70ee9b56,
+        :concept_25ff81b4,
         :concept_bb50f46d,
         :concept_d68a5574,
         :concept_e41b07e5,
@@ -693,7 +721,12 @@
     skos:definition "software program or group of programs designed for Digital Content Creation" ;
     skos:exactMatch <http://www.wikidata.org/entity/Q166142>,
         <https://d-nb.info/gnd/4120906-0> ;
-    skos:narrower :concept_061d262d,
+    skos:narrower :concept_c9354a79,
+        :concept_55853e8d,
+        :concept_deceb01b,
+        :concept_aad2b050,
+        :concept_376d9fd0,
+        :concept_061d262d,
         :concept_0cea70ba,
         :concept_27b314d5,
         :concept_3746b7a2,
@@ -811,3 +844,201 @@
     skos:definition "AI-assisted foreground/background masking or semantic segmentation of source imagery or 3D meshes." ;
     skos:prefLabel "KI-Segmentierung / Maskierung"@de,
         "AI segmentation / masking"@en .
+
+:concept_25261e6a a skos:Concept ;
+    skos:broader :concept_4b3095b3 ;
+    skos:definition "Photogrammetry software for creating 3D models from images or laser scans." ;
+    skos:prefLabel "RealityCapture"@de,
+        "RealityCapture"@en .
+
+:concept_dbd04823 a skos:Concept ;
+    skos:broader :concept_4b3095b3 ;
+    skos:definition "Open-source 3D reconstruction software based on the AliceVision photogrammetry framework." ;
+    skos:prefLabel "Meshroom (AliceVision)"@de,
+        "Meshroom (AliceVision)"@en .
+
+:concept_1110dcc9 a skos:Concept ;
+    skos:broader :concept_a91783c8 ;
+    skos:definition "3D point cloud and triangular mesh processing software." ;
+    skos:prefLabel "CloudCompare"@de,
+        "CloudCompare"@en .
+
+:concept_2829dc06 a skos:Concept ;
+    skos:broader :concept_a91783c8 ;
+    skos:definition "Field registration and point cloud processing software for Leica laser scanners." ;
+    skos:prefLabel "Leica Cyclone FIELD 3D"@de,
+        "Leica Cyclone FIELD 3D"@en .
+
+:concept_91e4fb4c a skos:Concept ;
+    skos:broader :concept_3e46ce7e ;
+    skos:definition "3D metrology and mesh inspection software." ;
+    skos:prefLabel "ZEISS INSPECT (GOM Inspect)"@de,
+        "ZEISS INSPECT (GOM Inspect)"@en .
+
+:concept_6362fc57 a skos:Concept ;
+    skos:broader :concept_3e46ce7e ;
+    skos:definition "3D scan-to-mesh processing and reverse engineering software." ;
+    skos:prefLabel "Geomagic Wrap"@de,
+        "Geomagic Wrap"@en .
+
+:concept_c9354a79 a skos:Concept ;
+    skos:broader :concept_fccb5d90 ;
+    skos:definition "3D texturing and material painting software." ;
+    skos:prefLabel "Adobe Substance 3D Painter"@de,
+        "Adobe Substance 3D Painter"@en .
+
+:concept_55853e8d a skos:Concept ;
+    skos:broader :concept_fccb5d90 ;
+    skos:definition "RAW image processing and color calibration software for photogrammetry workflows." ;
+    skos:prefLabel "Adobe Photoshop Lightroom"@de,
+        "Adobe Photoshop Lightroom"@en .
+
+:concept_deceb01b a skos:Concept ;
+    skos:broader :concept_fccb5d90 ;
+    skos:definition "Interactive field-aligned quad-remeshing software." ;
+    skos:prefLabel "Instant Meshes"@de,
+        "Instant Meshes"@en .
+
+:concept_aad2b050 a skos:Concept ;
+    skos:broader :concept_fccb5d90 ;
+    skos:definition "Digital sculpting and high-resolution 3D mesh modeling software." ;
+    skos:prefLabel "Pixologic ZBrush"@de,
+        "Pixologic ZBrush"@en .
+
+:concept_376d9fd0 a skos:Concept ;
+    skos:broader :concept_fccb5d90 ;
+    skos:definition "Open-source geographic information system for spatial referencing and geodata." ;
+    skos:prefLabel "QGIS"@de,
+        "QGIS"@en .
+
+:concept_259793d9 a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "Full-frame mirrorless digital camera used for high-resolution photogrammetry." ;
+    skos:prefLabel "Nikon Z8"@de,
+        "Nikon Z8"@en .
+
+:concept_f0315c39 a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "Prime lens for Nikon Z mount mirrorless cameras." ;
+    skos:prefLabel "Nikkor Z 50mm f/1.8 S"@de,
+        "Nikkor Z 50mm f/1.8 S"@en .
+
+:concept_e6d81770 a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "Prime lens for Nikon F mount DSLR cameras." ;
+    skos:prefLabel "AF-S NIKKOR 50mm f/1.8G"@de,
+        "AF-S NIKKOR 50mm f/1.8G"@en .
+
+:concept_cc7f91c4 a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "61 MP full-frame mirrorless camera for high-resolution cultural heritage digitisation." ;
+    skos:prefLabel "Sony Alpha 7R V"@de,
+        "Sony Alpha 7R V"@en .
+
+:concept_d3d9b8c8 a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "Prime lens for Sony E mount cameras." ;
+    skos:prefLabel "Sony FE 50mm f/1.2 GM"@de,
+        "Sony FE 50mm f/1.2 GM"@en .
+
+:concept_c6dee05f a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "33 MP full-frame mirrorless camera." ;
+    skos:prefLabel "Sony Alpha 7 IV"@de,
+        "Sony Alpha 7 IV"@en .
+
+:concept_5301f386 a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "45 MP full-frame mirrorless camera for photogrammetry." ;
+    skos:prefLabel "Canon EOS R5"@de,
+        "Canon EOS R5"@en .
+
+:concept_223a1aaf a skos:Concept ;
+    skos:broader :concept_384cdcdd ;
+    skos:definition "Prime lens for Canon RF mount cameras." ;
+    skos:prefLabel "Canon RF 50mm f/1.2L USM"@de,
+        "Canon RF 50mm f/1.2L USM"@en .
+
+:concept_ce922c0a a skos:Concept ;
+    skos:broader :concept_4fb72ff3 ;
+    skos:definition "High-precision blue-light 3D structured-light scanner for small objects." ;
+    skos:prefLabel "Artec Space Spider"@de,
+        "Artec Space Spider"@en .
+
+:concept_31c4f530 a skos:Concept ;
+    skos:broader :concept_4fb72ff3 ;
+    skos:definition "Industrial optical 3D structured-light metrology scanner." ;
+    skos:prefLabel "GOM ATOS Q"@de,
+        "GOM ATOS Q"@en .
+
+:concept_72a567e8 a skos:Concept ;
+    skos:broader :concept_4fb72ff3 ;
+    skos:definition "Handheld structured-light 3D scanner." ;
+    skos:prefLabel "Shining 3D EinScan Pro HD"@de,
+        "Shining 3D EinScan Pro HD"@en .
+
+:concept_53282b55 a skos:Concept ;
+    skos:broader :concept_199de53d ;
+    skos:definition "Compact imaging terrestrial laser scanner." ;
+    skos:prefLabel "Leica BLK360 G2"@de,
+        "Leica BLK360 G2"@en .
+
+:concept_f0e21e0e a skos:Concept ;
+    skos:broader :concept_199de53d ;
+    skos:definition "High-speed terrestrial 3D laser scanner with VIS technology." ;
+    skos:prefLabel "Leica RTC360"@de,
+        "Leica RTC360"@en .
+
+:concept_70ee9b56 a skos:Concept ;
+    skos:broader :concept_199de53d ;
+    skos:definition "Terrestrial 3D laser scanner for architecture and heritage sites." ;
+    skos:prefLabel "FARO Focus Premium"@de,
+        "FARO Focus Premium"@en .
+
+:concept_0472e85d a skos:Concept ;
+    skos:broader :concept_e4c77406 ;
+    skos:definition "Color reference target for camera calibration in photogrammetry." ;
+    skos:prefLabel "Calibrite ColorChecker Passport Photo 2"@de,
+        "Calibrite ColorChecker Passport Photo 2"@en .
+
+:concept_393f51b8 a skos:Concept ;
+    skos:broader :concept_e4c77406 ;
+    skos:definition "Thermally stable calibrated scale bars for metric 3D scaling." ;
+    skos:prefLabel "Invar-Maßstäbe"@de,
+        "Invar scale bars"@en .
+
+:concept_28fc4682 a skos:Concept ;
+    skos:broader :concept_e4c77406 ;
+    skos:definition "Polarised flash lighting for specular-free photogrammetric texture capture." ;
+    skos:prefLabel "Kreuzpolarisations-Ringblitz"@de,
+        "Cross-polarised ring flash"@en .
+
+:concept_82d08020 a skos:Concept ;
+    skos:broader :concept_e4c77406 ;
+    skos:definition "Automated turntable for multi-angle object photogrammetry." ;
+    skos:prefLabel "Drehteller (elektrisch)"@de,
+        "Motorised turntable"@en .
+
+:concept_8d04c174 a skos:Concept ;
+    skos:broader :concept_d162f44c ;
+    skos:definition "Autodesk Filmbox 3D exchange file format." ;
+    skos:prefLabel "FBX (Dateiformat)"@de,
+        "FBX (File format)"@en .
+
+:concept_6cc049c4 a skos:Concept ;
+    skos:broader :concept_d162f44c ;
+    skos:definition "Compressed LAS LiDAR point cloud file format." ;
+    skos:prefLabel "LAZ (Dateiformat)"@de,
+        "LAZ (File format)"@en .
+
+:concept_362b4469 a skos:Concept ;
+    skos:broader :concept_d162f44c ;
+    skos:definition "Universal Scene Description archive format for 3D and AR." ;
+    skos:prefLabel "USDZ (Dateiformat)"@de,
+        "USDZ (File format)"@en .
+
+:concept_bcea0f22 a skos:Concept ;
+    skos:broader :concept_d162f44c ;
+    skos:definition "Stereolithography triangle mesh file format." ;
+    skos:prefLabel "STL (Dateiformat)"@de,
+        "STL (File format)"@en .
