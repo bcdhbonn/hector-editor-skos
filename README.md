@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="hector_logo.png" alt="HECTOR Logo" width="420">
+</p>
+
 # HECTOR-Editor
 
 HECTOR-Editor is a lightweight, responsive desktop application built with Python and CustomTkinter for managing semantic SKOS vocabularies. Tailored for workflows in the Digital Humanities and archaeological data management, it allows researchers to easily build, edit, and serialize structured hierarchical concept schemes.
