@@ -1,10 +1,13 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+message: "If you use this software or these vocabularies, please cite them as below."
 authors:
   - family-names: "Lang"
     given-names: "Matthias"
-    orcid: "https://orcid.org/0000-0003-3047-2722" 
-title: "HECTOR-Editor"
-version: 1.0.0
-date-released: 2026-06-12
-url: "https://github.com/bcdhbonn/hector-editor"
+    orcid: "https://orcid.org/0000-0003-3047-2722"
+    affiliation: "Bonn Center for Digital Humanities (BCDH), University of Bonn"
+title: "HECTOR-Editor & BCDH Archaeological SKOS Vocabularies"
+version: 1.1.0
+date-released: 2026-11-27
+license: MIT
+repository-code: "https://github.com/bcdhbonn/hector-editor-skos"
+url: "https://github.com/bcdhbonn/hector-editor-skos"

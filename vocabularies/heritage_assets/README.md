@@ -6,38 +6,56 @@ This directory contains the compiled and integrated SKOS vocabulary: **`heritage
 
 ## 🌐 Namespace & URI Scheme
 
-* **Base Namespace:** `http://vocabs.bcdh.uni-bonn.de/heritage_assets/`
+* **Base Namespace:** `http://vocabs.bcdh.uni-bonn.de/hector_heritage_assets/`
+* **Concept Scheme URI:** `http://vocabs.bcdh.uni-bonn.de/hector_heritage_assets/scheme`
+* **Root Concept:** `http://vocabs.bcdh.uni-bonn.de/hector_heritage_assets/concept_aeb4b812` (`Kulturgut` / `HeritageAsset`)
 * **Namespace Prefix:** `th`
-* **URIs:** To ensure URI stability and decoupling from human-readable labels, all concepts use identifiers of the format:
-  `http://vocabs.bcdh.uni-bonn.de/heritage_assets/<concept_id>`
-  * The `<concept_id>` represents a unique, stable, and human-readable identifier (e.g., `amphora`, `koilon`, `red-figure`).
+* **Concept URIs:** To ensure URI stability, concepts use opaque hash identifiers:
+  `http://vocabs.bcdh.uni-bonn.de/hector_heritage_assets/concept_<id>`
 
 ---
 
-## 📂 Vocabulary Facets & Focus
+## 📂 Vocabulary Structure & Facets
 
-The vocabulary contains a hierarchical classification of cultural heritage assets, architecture, and ceramic wares. **The current focus of this vocabulary is on the classical archaeology of the Mediterranean region (Mittelmeerraum).**
+The vocabulary contains a comprehensive, multi-hierarchical classification of cultural heritage assets, material culture, natural context, and iconography across classical archaeology and antiquity (Mediterranean and Europe).
 
-The vocabulary is structured into 6 core facets:
+The thesaurus encompasses **6,463 concepts** across **14 core top-level facets** under the root concept `Kulturgut` (`HeritageAsset`):
 
-1. **Container (Vessels):** 
-   * A comprehensive classification of ancient vessel forms, focusing particularly on ancient Greek, Etruscan, and Roman pottery shapes (e.g., amphorae, lekythoi, kraters, hydriai, pyxides, cups, and bowls).
-2. **Ceramics (Wares & Styles):**
-   * Regional and stylistic divisions of ancient Mediterranean pottery (e.g., Corinthian ceramics, Attic black-figure and red-figure styles, Apulian, Campanian, Messapian, Daunian, and Peucetian wares, as well as Etruscan Bucchero).
-3. **Vase Painters:**
-   * Hierarchical listings of ancient Greek and Roman vase painters and potter groups (e.g., Achilles Painter, Athena Painter, Theseus Painter, Berlin Painter).
-4. **Sculpture (Visual Arts & Decor):**
-   * Classical sculptural categories (statuettes/figurines, statues, portraiture, reliefs) and architectural-sculptural elements (e.g., acroteria, peplophoroi).
-5. **Architecture and Urbanism:**
-   * Ancient building typologies (temples, theaters, catacombs, curias, fortifications) and specific structural components (columns, capitals, bases, cornices, roofing systems).
-6. **Ornament:**
-   * Decorative patterns, friezes, and motifs (geometric, floral, and figurative) used on ancient architecture and pottery.
+1. **Architektur und Urbanistik (Architecture and Urbanism):**
+   * Ancient building typologies (temples, theaters, catacombs, fortifications, villas, forums) and structural components (columns, capitals, entablatures, roofing systems).
+2. **Behälter (Container):**
+   * Ancient vessel shapes, storage vessels, transport amphorae, pyxides, and containers.
+3. **Beleuchtungsgerät (Lighting Device):**
+   * Ancient lighting appliances (oil lamps, candelabra, torches, candleholders, lanterns).
+4. **Bildhauerei / Plastik (Sculpture):**
+   * Free-standing sculpture, architectural sculpture, portraits, reliefs, and statuettes.
+5. **Botanik (Botany):**
+   * Trees, plants, floral elements, and botanical subjects in archaeological context and iconography.
+6. **Ethnien und Kulturen (Peoples and Cultures):**
+   * Ancient cultures, peoples, and ethnic groups (Celts, Germanic tribes, Romans, Greeks, Iberians, Illyrians, Italic peoples, Thracians, Sarmatians).
+7. **Glas (Glass):**
+   * Ancient glass vessels, Isings typology forms, glass mosaics, beads, and glassworking techniques.
+8. **Keramik (Ceramics & Vase Painters):**
+   * Ancient Mediterranean pottery wares (Attic, Corinthian, South Italian, Etruscan) and comprehensive catalog of Greek, Etruscan, and Roman vase painters and potter workshops.
+9. **Material (Materials & Raw Substances):**
+   * Marbles, stone types, metals and alloys, organic materials (wood, bone, ivory, leather), pigments, clay, and minerals.
+10. **Maß- und Größenangabe (Dimensions and Size Information):**
+    * Terminology for archaeological dimensions, proportions, and size classifications.
+11. **Mythologie (Mythology & Iconography):**
+    * Greek and Roman mythological pantheon, deities, heroes, mythological creatures, and narrative saga cycles.
+12. **Ornament (Ornament & Decorative Motifs):**
+    * Geometric, vegetative/floral, and figurative decorative patterns, friezes, and borders on architecture and pottery.
+13. **Realia (Everyday Objects, Tools & Armament):**
+    * Ancient daily-life artifacts, tools, implements, weapons, armor, musical instruments, and ancient garments/footwear.
+14. **Zoologie (Zoology & Fauna):**
+    * Animals, mammals, birds, fish, reptiles, amphibians, and insects in ancient iconography and archaeozoology.
 
 ---
 
 ## 🔗 Authority File Alignments
 
-Core concepts are enriched with labels, scope notes (definitions), and exact matches (`skos:exactMatch`) to global authority files:
-* **Wikidata URIs** (e.g., `http://www.wikidata.org/entity/Q...`)
-* **Gemeinsame Normdaten (GND) URIs** (e.g., `https://d-nb.info/gnd/...`)
-* **Getty Art & Architecture Thesaurus (AAT) URIs** (e.g., `http://vocab.getty.edu/aat/...`)
+Concepts are enriched with multilingual labels (`de`, `en`, `it`), scope notes, definitions, and exact matches (`skos:exactMatch`) to international authority files:
+* **Wikidata URIs** (`http://www.wikidata.org/entity/Q...`)
+* **Gemeinsame Normdatei (GND) URIs** (`https://d-nb.info/gnd/...`)
+* **Getty Art & Architecture Thesaurus (AAT) URIs** (`http://vocab.getty.edu/aat/...`)
+

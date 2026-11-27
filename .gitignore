@@ -5,6 +5,8 @@ hector_config.json
 __pycache__/
 *.py[cod]
 build/
+dist/
+*.exe
 .pytest_cache/
 venv/
 .venv/
