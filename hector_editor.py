@@ -48,10 +48,12 @@ class HECTOREditor:
                 img_photo = tk.PhotoImage(file=icon_path)
                 self.root.iconphoto(False, img_photo)
                 
-                # Load as PIL Image for CTkImage in header
+                # Load as PIL Image for CTkImage in header (preserve aspect ratio)
                 from PIL import Image
                 pil_img = Image.open(icon_path)
-                self.logo_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(24, 24))
+                logo_h = 34
+                logo_w = max(logo_h, int(round(logo_h * pil_img.width / pil_img.height)))
+                self.logo_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(logo_w, logo_h))
             except Exception as e:
                 print(f"Could not load window icon: {e}")
 
