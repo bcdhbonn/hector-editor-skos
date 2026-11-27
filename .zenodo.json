@@ -1,6 +1,6 @@
 {
-  "title": "HECTOR-Editor & BCDH Archaeological SKOS Vocabularies",
-  "description": "<p><strong>HECTOR-Editor</strong> is a lightweight desktop application built with Python and CustomTkinter for managing semantic SKOS vocabularies in the Digital Humanities and archaeological data management.</p><p>This repository also contains the <strong>BCDH SKOS Vocabularies Collection</strong> (<code>vocabularies/</code>):</p><ul><li><strong>HECTOR Epoch SKOS Vocabulary</strong> (<code>vocabularies/hector_epochs/HECTOR_Epoch.ttl</code>)</li><li><strong>HECTOR 3D Documentation SKOS Vocabulary</strong> (<code>vocabularies/hector_3d_documentation/HECTOR_3D_Documentation.ttl</code>)</li><li><strong>BCDH Heritage Assets SKOS Vocabulary</strong> (<code>vocabularies/heritage_assets/heritage_assets.ttl</code>)</li><li><strong>LVR Grabungsrichtlinien SKOS Vocabulary</strong> (<code>vocabularies/lvr/LVR_Grabungsrichtlinien.ttl</code>)</li><li><strong>Rhineland Archaeological SKOS Vocabulary</strong> (<code>vocabularies/BJB/arch_vocab_rhineland.ttl</code>)</li></ul><p>Developed at the Bonn Center for Digital Humanities (BCDH) as part of the NFDI4Objects consortium (funded by the German Research Foundation (DFG) – Project number 441958489).</p>",
+  "title": "HECTOR-Editor & HECTOR SKOS Vocabularies",
+  "description": "<p><strong>HECTOR-Editor</strong> is a lightweight desktop application built with Python and CustomTkinter for managing semantic SKOS vocabularies in the Digital Humanities and archaeological data management.</p><p>This repository also contains the <strong>HECTOR SKOS Vocabularies Collection</strong> (<code>vocabularies/</code>):</p><ul><li><strong>HECTOR Epoch SKOS Vocabulary</strong> (<code>vocabularies/hector_epochs/HECTOR_Epoch.ttl</code>)</li><li><strong>HECTOR 3D Documentation SKOS Vocabulary</strong> (<code>vocabularies/hector_3d_documentation/HECTOR_3D_Documentation.ttl</code>)</li><li><strong>HECTOR Heritage Assets SKOS Vocabulary</strong> (<code>vocabularies/heritage_assets/heritage_assets.ttl</code>)</li></ul><p>Developed at the Bonn Center for Digital Humanities (BCDH) as part of the NFDI4Objects consortium (funded by the German Research Foundation (DFG) – Project number 441958489).</p>",
   "upload_type": "software",
   "access_right": "open",
   "license": "MIT",
@@ -21,8 +21,8 @@
     "Turtle",
     "NFDI4Objects",
     "HECTOR",
-    "LVR",
-    "Cultural Heritage"
+    "Cultural Heritage",
+    "3D Documentation"
   ],
   "notes": "Funded by the German Research Foundation (DFG) within NFDI4Objects (Project number 441958489)."
 }

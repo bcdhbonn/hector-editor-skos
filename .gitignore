@@ -12,12 +12,12 @@ venv/
 .venv/
 venv_build/
 
-# ABR Files & Mapping Reports
-vocabularies/BJB/ABR*
-vocabularies/BJB/*abr*
+# Non-HECTOR Vocabularies & Raw Source Data
+LVR/
+vocabularies/lvr/
+vocabularies/BJB/
 
 # Vocabulary Drafts & Temp Files
-vocabularies/BJB/archaevocabNLDE.ttl
 vocabularies/hector_epochs/Liste_WNK-Datierungen.csv
 vocabularies/material.ttl
 vocabularies/test.html
